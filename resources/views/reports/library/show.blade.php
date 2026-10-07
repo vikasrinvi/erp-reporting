@@ -132,24 +132,28 @@
 
             <div class="d-flex gap-2">
 
-                <a href="{{ route(
-                    'reports.library.edit',
-                    $report
-                ) }}"
-                   class="btn btn-light">
+                <a href="{{ route('reports.library.edit', $report) }}"
+                   class="btn btn-outline-secondary">
 
-                    <i class="bi bi-pencil me-1"></i>
+                    <i class="bi bi-pencil-square me-1"></i>
                     Edit
 
                 </a>
 
+                <a href="{{ route('reports.library.query-builder', $report) }}"
+                   class="btn btn-dark">
+
+                    <i class="bi bi-diagram-3 me-1"></i>
+                    Query Builder
+
+                </a>
 
                 @if($report->route)
 
                     <a href="{{ url($report->route) }}"
-                       class="btn btn-light">
+                       class="btn btn-primary">
 
-                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                        <i class="bi bi-play-circle me-1"></i>
                         Open Report
 
                     </a>

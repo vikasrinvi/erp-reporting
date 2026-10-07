@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ReportQuery;
 use Illuminate\Database\Eloquent\Model;
 
 class ReportLibrary extends Model
@@ -57,4 +58,13 @@ class ReportLibrary extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+    
+    public function queries()
+    {
+        return $this->hasMany(
+            ReportQuery::class,
+            'report_library_id'
+        );
+    }
 }
+

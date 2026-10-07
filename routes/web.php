@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReportLibraryController;
 use App\Http\Controllers\AsvReportController;
+use App\Http\Controllers\ReportQueryController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -40,65 +41,120 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->group(function () {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Dashboard
-    |--------------------------------------------------------------------------
-    */
-
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Reports
-    |--------------------------------------------------------------------------
-    */
-
-    Route::prefix('reports')->name('reports.')->group(function () {
+    Route::middleware('auth')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | Report Library
+        | Dashboard
         |--------------------------------------------------------------------------
         */
 
-        Route::get('/library', [ReportLibraryController::class, 'index'])
-            ->name('library');
-
-        Route::get('/library/create', [ReportLibraryController::class, 'create'])
-            ->name('library.create');
-
-        Route::post('/library', [ReportLibraryController::class, 'store'])
-            ->name('library.store');
-
-        /*
-         * IMPORTANT:
-         * /edit must come BEFORE /{report}
-         */
-
-        Route::get('/library/{report}/edit', [ReportLibraryController::class, 'edit'])
-            ->name('library.edit');
-
-        Route::put('/library/{report}', [ReportLibraryController::class, 'update'])
-            ->name('library.update');
-
-        Route::get('/library/{report}', [ReportLibraryController::class, 'show'])
-            ->name('library.show');
+        Route::get('/dashboard', function () {
+            return view('dashboard');
+        })->name('dashboard');
 
 
         /*
         |--------------------------------------------------------------------------
-        | ASV Item Issue Report
+        | Reports
         |--------------------------------------------------------------------------
         */
 
-        Route::get('/asv', [AsvReportController::class, 'index'])
-            ->name('asv');
+       Route::prefix('reports')->name('reports.')->group(function () {
+
+        Route::get(
+            '/library',
+            [ReportLibraryController::class, 'index']
+        )->name('library');
+
+        Route::get(
+            '/library/create',
+            [ReportLibraryController::class, 'create']
+        )->name('library.create');
+
+        Route::post(
+            '/library',
+            [ReportLibraryController::class, 'store']
+        )->name('library.store');
+
+        Route::get(
+            '/library/{report}/edit',
+            [ReportLibraryController::class, 'edit']
+        )->name('library.edit');
+
+        Route::put(
+            '/library/{report}',
+            [ReportLibraryController::class, 'update']
+        )->name('library.update');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Query Builder
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/library/{report}/query-builder',
+            [ReportQueryController::class, 'builder']
+        )->name('library.query-builder');
+
+        Route::post(
+            '/library/{report}/query-builder/generate',
+            [ReportQueryController::class, 'generate']
+        )->name('library.query-builder.generate');
+
+        Route::post(
+            '/library/{report}/query-builder/save',
+            [ReportQueryController::class, 'save']
+        )->name('library.query-builder.save');
+
+        Route::post(
+            '/library/{report}/query-builder/execute',
+            [ReportQueryController::class, 'execute']
+        )->name('library.query-builder.execute');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Database Metadata
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/database/tables',
+            [ReportQueryController::class, 'databaseTables']
+        )->name('database.tables');
+
+        Route::get(
+            '/database/columns',
+            [ReportQueryController::class, 'databaseColumns']
+        )->name('database.columns');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Actual Reports
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/asv',
+            [AsvReportController::class, 'index']
+        )->name('asv');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | IMPORTANT: Show must remain LAST
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/library/{report}',
+            [ReportLibraryController::class, 'show']
+        )->name('library.show');
+
     });
     
 
