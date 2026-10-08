@@ -63,4 +63,8 @@ class ReportQuery extends Model
             'report_library_id'
         );
     }
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
 }

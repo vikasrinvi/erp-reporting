@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReportLibraryController;
 use App\Http\Controllers\AsvReportController;
 use App\Http\Controllers\ReportQueryController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -156,24 +157,52 @@ Route::get('/', function () {
         )->name('library.show');
 
     });
-    
+
+    Route::prefix('report-queries')
+        ->name('report-queries.')
+        ->group(function () {
+
+            /*
+            |--------------------------------------------------------------------------
+            | All saved queries
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                '/',
+                [ReportQueryController::class, 'index']
+            )->name('index');
+
+            /*
+            |--------------------------------------------------------------------------
+            | View saved query as report
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                '/{query}/report',
+                [ReportQueryController::class, 'viewReport']
+            )->name('report');
+
+        });
+        
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Future ERP Modules
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Future ERP Modules
+        |--------------------------------------------------------------------------
+        */
 
-    Route::get('/inventory', function () {
-        return view('inventory.index');
-    })->name('inventory');
+        Route::get('/inventory', function () {
+            return view('inventory.index');
+        })->name('inventory');
 
-    Route::get('/masters', function () {
-        return view('masters.index');
-    })->name('masters');
+        Route::get('/masters', function () {
+            return view('masters.index');
+        })->name('masters');
 
-});
+    });
 
 
 /*

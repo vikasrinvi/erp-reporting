@@ -151,7 +151,7 @@
                         </a>
 
                         <ul class="dropdown-menu">
-
+                            
                             <li>
                                 <a
                                     class="dropdown-item"
@@ -160,6 +160,15 @@
                                     <i class="bi bi-collection me-2"></i>
                                     Report Library
                                 </a>
+                            </li>
+                            <li>
+                            <a
+                                href="{{ route('report-queries.index') }}"
+                                class="dropdown-item"
+                            >
+                                <i class="bi bi-database-gear me-2"></i>
+                                Saved Queries
+                            </a>
                             </li>
 
                             <li>

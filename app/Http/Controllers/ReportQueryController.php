@@ -19,6 +19,250 @@ class ReportQueryController extends Controller
     }
 
 
+    public function index(Request $request)
+    {
+        $query = ReportQuery::query()
+            ->with('report')
+            ->latest('updated_at');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('search')) {
+
+            $search = trim(
+                $request->input('search')
+            );
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'query_name',
+                    'LIKE',
+                    "%{$search}%"
+                );
+
+                $q->orWhereHas(
+                    'report',
+                    function ($reportQuery) use ($search) {
+
+                        $reportQuery->where(
+                            'name',
+                            'LIKE',
+                            "%{$search}%"
+                        );
+                    }
+                );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Report filter
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('report_id')) {
+
+            $query->where(
+                'report_library_id',
+                $request->input('report_id')
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Query mode
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $request->filled('query_mode') &&
+            in_array(
+                $request->input('query_mode'),
+                ['builder', 'custom'],
+                true
+            )
+        ) {
+
+            $query->where(
+                'query_mode',
+                $request->input('query_mode')
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Status
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('status')) {
+
+            if ($request->input('status') === 'active') {
+
+                $query->where(
+                    'is_active',
+                    true
+                );
+
+            } elseif (
+                $request->input('status') === 'inactive'
+            ) {
+
+                $query->where(
+                    'is_active',
+                    false
+                );
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+
+        $queries = $query
+            ->paginate(15)
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Report dropdown
+        |--------------------------------------------------------------------------
+        */
+
+        $reports = \App\Models\ReportLibrary::query()
+            ->orderBy('report_name')
+            ->get();
+
+        return view(
+            'reports.queries.index',
+            compact(
+                'queries',
+                'reports'
+            )
+        );
+    }
+
+
+    public function viewReport(ReportQuery $query)
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Make sure the report relationship exists
+        |--------------------------------------------------------------------------
+        */
+
+        $query->load('report');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get SQL according to query mode
+        |--------------------------------------------------------------------------
+        */
+
+        if ($query->query_mode === 'custom') {
+
+            $sql = trim(
+                (string) $query->custom_sql
+            );
+
+        } else {
+
+            $sql = trim(
+                (string) $query->generated_sql
+            );
+        }
+
+        if ($sql === '') {
+
+            return redirect()
+                ->route('report-queries.index')
+                ->with(
+                    'error',
+                    'This saved query does not contain executable SQL.'
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Security
+        |--------------------------------------------------------------------------
+        */
+
+        if (!$this->isSafeSelectQuery($sql)) {
+
+            return redirect()
+                ->route('report-queries.index')
+                ->with(
+                    'error',
+                    'This query cannot be executed because it is not a valid SELECT query.'
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Remove trailing semicolon
+        |--------------------------------------------------------------------------
+        */
+
+        $sql = rtrim(
+            $sql,
+            " \t\n\r\0\x0B;"
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Execute
+        |--------------------------------------------------------------------------
+        */
+
+        try {
+
+            $rows = DB::select($sql);
+
+            $columns = [];
+
+            if (!empty($rows)) {
+
+                $columns = array_keys(
+                    get_object_vars(
+                        $rows[0]
+                    )
+                );
+            }
+
+            return view(
+                'reports.queries.report',
+                compact(
+                    'query',
+                    'rows',
+                    'columns',
+                    'sql'
+                )
+            );
+
+        } catch (\Throwable $e) {
+
+            return view(
+                'reports.queries.report',
+                [
+                    'query' => $query,
+                    'rows' => [],
+                    'columns' => [],
+                    'sql' => $sql,
+                    'error' => $e->getMessage(),
+                ]
+            );
+        }
+    }
+
+
     /*
     |--------------------------------------------------------------------------
     | Builder Page
