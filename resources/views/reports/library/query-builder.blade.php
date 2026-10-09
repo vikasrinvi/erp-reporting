@@ -3539,7 +3539,10 @@ function loadSavedQuery() {
         .forEach(row =>
             addFilterRow(row)
         );
-
+    (savedQuery.filters ?? [])
+        .forEach(row =>
+        showReportFilter(row)
+        );
 
     (savedQuery.group_by ?? [])
         .forEach(row =>
@@ -4198,6 +4201,28 @@ document.addEventListener(
 |--------------------------------------------------------------------------
 */
 
+function showReportFilter(data = {}) {
+
+const id = Number.isInteger(data._id)
+    ? data._id
+    : Date.now() + Math.floor(Math.random() * 100000);
+
+const filter = {
+    _id: id,
+    column: data.column || '',
+    label: data.label || '',
+    type: data.type || 'search',
+    options: Array.isArray(data.options)
+        ? data.options
+        : [],
+    runtime: data.runtime === true
+};
+
+reportFilters.push(filter);
+
+renderReportFiltersToShow();
+}
+
 function addReportFilter(data = {}) {
 
 const id = Number.isInteger(data._id)
@@ -4220,6 +4245,115 @@ reportFilters.push(filter);
 renderReportFilters();
 }
 
+function renderReportFiltersToShow() {
+    const container = document.getElementById('reportFiltersContainer');
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = '';
+
+    // Filter array to include only elements where runtime is strictly true
+    const activeFilters = reportFilters.filter(filter => filter.runtime === true);
+    console.log(activeFilters);
+
+    
+    activeFilters.forEach((filter, index) => {
+        const row = document.createElement('div');
+        row.className = 'builder-row border rounded p-3 mb-3';
+
+        row.innerHTML = `
+            <div class="row g-3 align-items-end">
+
+                <div class="col-md-3">
+                    <label class="form-label">Column</label>
+                    <input
+                        type="text"
+                        class="form-control report-filter-column"
+                        data-index="${index}"
+                        value="${escapeHtml(filter.column)}"
+                        placeholder="ib.DIV_CODE"
+                    >
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Label</label>
+                    <input
+                        type="text"
+                        class="form-control report-filter-label"
+                        data-index="${index}"
+                        value="${escapeHtml(filter.label)}"
+                        placeholder="Division"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Filter Type</label>
+                    <select
+                        class="form-select report-filter-type"
+                        data-index="${index}"
+                    >
+                        <option value="search"
+                            ${filter.type === 'search' ? 'selected' : ''}>
+                            Search Text
+                        </option>
+
+                        <option value="select"
+                            ${filter.type === 'select' ? 'selected' : ''}>
+                            Dropdown
+                        </option>
+
+                        <option value="multi_select"
+                            ${filter.type === 'multi_select' ? 'selected' : ''}>
+                            Multi Select
+                        </option>
+
+                        <option value="date_range"
+                            ${filter.type === 'date_range' ? 'selected' : ''}>
+                            From / To Date
+                        </option>
+
+                        <option value="number_range"
+                            ${filter.type === 'number_range' ? 'selected' : ''}>
+                            Min / Max Number
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Dropdown Options <span class="form-text">
+                        For dropdowns: comma-separated values, or leave empty to load from the database.
+                    </span></label>
+
+                    <input
+                        type="text"
+                        class="form-control report-filter-options"
+                        data-index="${index}"
+                        value="${escapeHtml(filter.options.join(', '))}"
+                        placeholder="AG, AH, AM"
+                    >
+                </div>
+
+                <div class="col-md-1">
+                    <button
+                        type="button"
+                        class="btn btn-outline-danger"
+                        onclick="removeReportFilter(${index})"
+                        title="Remove filter"
+                    >
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+
+            </div>
+        `;
+
+        container.appendChild(row);
+    });
+
+    attachReportFilterEvents();
+}
 
 function renderReportFilters() {
 
@@ -4300,7 +4434,9 @@ reportFilters.forEach((filter, index) => {
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Dropdown Options</label>
+                <label class="form-label">Dropdown Options <span class="form-text">
+                    For dropdowns: comma-separated values, or leave empty to load from the database.
+                </span></label>
 
                 <input
                     type="text"
@@ -4310,9 +4446,7 @@ reportFilters.forEach((filter, index) => {
                     placeholder="AG, AH, AM"
                 >
 
-                <div class="form-text">
-                    For dropdowns: comma-separated values, or leave empty to load from the database.
-                </div>
+                
             </div>
 
             <div class="col-md-1">
