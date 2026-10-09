@@ -184,6 +184,16 @@ Route::get('/', function () {
                 [ReportQueryController::class, 'viewReport']
             )->name('report');
 
+            Route::get(
+                '/report-queries/{query}/report',
+                [ReportQueryController::class, 'viewReport']
+            )->name('report');
+            
+            Route::get(
+                '/report-queries/{query}/filter-options',
+                [ReportQueryController::class, 'filterOptions']
+            )->name('filter-options');
+
         });
         
 

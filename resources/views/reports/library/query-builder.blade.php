@@ -427,6 +427,33 @@
     </div>
 
 
+    {{-- REPORT PAGE FILTER DEFINITIONS --}}
+
+    <div class="builder-card">
+
+        <div class="section-title">
+            <i class="bi bi-funnel"></i>
+            Report Page Filters
+        </div>
+
+        <p class="text-muted small">
+            Choose which fields users can filter on when viewing the saved report.
+        </p>
+
+        <div id="reportFiltersContainer"></div>
+
+        <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            onclick="addReportFilter()"
+        >
+            <i class="bi bi-plus-lg me-1"></i>
+            Add Report Filter
+        </button>
+
+    </div>
+
+
     {{-- ========================================================= --}}
     {{-- 5. GROUP BY --}}
     {{-- ========================================================= --}}
@@ -1285,6 +1312,8 @@ const savedQuery = @json($savedQueryData);
 
 let pivotValues = [];
 let pivotDimensions = [];
+
+let reportFilters = [];
 
 
 /*
@@ -2616,16 +2645,30 @@ function collectBuilderData() {
         });
 
 
-    return {
+        return {
 
-        tables,
-        joins,
-        columns,
-        filters,
-        group_by: groupBy,
-        order_by: orderBy
+            tables,
+            joins,
+            columns,
 
-    };
+            filters: [
+                ...filters,
+
+                ...reportFilters
+                    .filter(filter => filter.column.trim() !== '')
+                    .map(filter => ({
+                        column: filter.column.trim(),
+                        label: filter.label.trim(),
+                        type: filter.type,
+                        options: filter.options,
+                        runtime: true
+                    }))
+            ],
+
+            group_by: groupBy,
+            order_by: orderBy
+
+        };
 
 }
 
@@ -4148,6 +4191,207 @@ document.addEventListener(
 
     }
 );
+
+/*
+|--------------------------------------------------------------------------
+| Report Page Filters
+|--------------------------------------------------------------------------
+*/
+
+function addReportFilter(data = {}) {
+
+const id = Number.isInteger(data._id)
+    ? data._id
+    : Date.now() + Math.floor(Math.random() * 100000);
+
+const filter = {
+    _id: id,
+    column: data.column || '',
+    label: data.label || '',
+    type: data.type || 'search',
+    options: Array.isArray(data.options)
+        ? data.options
+        : [],
+    runtime: true
+};
+
+reportFilters.push(filter);
+
+renderReportFilters();
+}
+
+
+function renderReportFilters() {
+
+const container =
+    document.getElementById('reportFiltersContainer');
+
+if (!container) {
+    return;
+}
+
+container.innerHTML = '';
+
+reportFilters.forEach((filter, index) => {
+
+    const row = document.createElement('div');
+
+    row.className = 'builder-row border rounded p-3 mb-3';
+
+    row.innerHTML = `
+        <div class="row g-3 align-items-end">
+
+            <div class="col-md-3">
+                <label class="form-label">Column</label>
+
+                <input
+                    type="text"
+                    class="form-control report-filter-column"
+                    data-index="${index}"
+                    value="${escapeHtml(filter.column)}"
+                    placeholder="ib.DIV_CODE"
+                >
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Label</label>
+
+                <input
+                    type="text"
+                    class="form-control report-filter-label"
+                    data-index="${index}"
+                    value="${escapeHtml(filter.label)}"
+                    placeholder="Division"
+                >
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Filter Type</label>
+
+                <select
+                    class="form-select report-filter-type"
+                    data-index="${index}"
+                >
+                    <option value="search"
+                        ${filter.type === 'search' ? 'selected' : ''}>
+                        Search Text
+                    </option>
+
+                    <option value="select"
+                        ${filter.type === 'select' ? 'selected' : ''}>
+                        Dropdown
+                    </option>
+
+                    <option value="multi_select"
+                        ${filter.type === 'multi_select' ? 'selected' : ''}>
+                        Multi Select
+                    </option>
+
+                    <option value="date_range"
+                        ${filter.type === 'date_range' ? 'selected' : ''}>
+                        From / To Date
+                    </option>
+
+                    <option value="number_range"
+                        ${filter.type === 'number_range' ? 'selected' : ''}>
+                        Min / Max Number
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Dropdown Options</label>
+
+                <input
+                    type="text"
+                    class="form-control report-filter-options"
+                    data-index="${index}"
+                    value="${escapeHtml(filter.options.join(', '))}"
+                    placeholder="AG, AH, AM"
+                >
+
+                <div class="form-text">
+                    For dropdowns: comma-separated values, or leave empty to load from the database.
+                </div>
+            </div>
+
+            <div class="col-md-1">
+                <button
+                    type="button"
+                    class="btn btn-outline-danger"
+                    onclick="removeReportFilter(${index})"
+                    title="Remove filter"
+                >
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+
+        </div>
+    `;
+
+    container.appendChild(row);
+});
+
+attachReportFilterEvents();
+}
+
+
+function attachReportFilterEvents() {
+
+document.querySelectorAll('.report-filter-column')
+    .forEach(element => {
+
+        element.addEventListener('input', function () {
+
+            reportFilters[Number(this.dataset.index)].column =
+                this.value.trim();
+        });
+    });
+
+
+document.querySelectorAll('.report-filter-label')
+    .forEach(element => {
+
+        element.addEventListener('input', function () {
+
+            reportFilters[Number(this.dataset.index)].label =
+                this.value.trim();
+        });
+    });
+
+
+document.querySelectorAll('.report-filter-type')
+    .forEach(element => {
+
+        element.addEventListener('change', function () {
+
+            reportFilters[Number(this.dataset.index)].type =
+                this.value;
+        });
+    });
+
+
+document.querySelectorAll('.report-filter-options')
+    .forEach(element => {
+
+        element.addEventListener('input', function () {
+
+            reportFilters[Number(this.dataset.index)].options =
+                this.value
+                    .split(',')
+                    .map(value => value.trim())
+                    .filter(Boolean);
+        });
+    });
+}
+
+
+function removeReportFilter(index) {
+
+reportFilters.splice(index, 1);
+
+renderReportFilters();
+}
 
 </script>
 

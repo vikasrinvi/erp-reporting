@@ -1,491 +1,562 @@
 @extends('layouts.app')
 
-@section('title', $query->query_name . ' - Report')
-
 @section('content')
 
-<style>
+@php
+    $savedFilters = $query->filters_json ?? [];
 
+    $runtimeFilters = collect($savedFilters)
+        ->filter(fn ($filter) => !empty($filter['runtime']) && !empty($filter['type']));
+    
+    $resultColumns = !empty($results)
+        ? array_keys((array) $results[0])
+        : [];
+@endphp
+
+<link
+    href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css"
+    rel="stylesheet"
+>
+
+<style>
     .report-page {
         background: #f5f7fb;
-        min-height: calc(100vh - 60px);
-        padding: 28px;
-    }
-
-    .report-header {
-        background: linear-gradient(
-            135deg,
-            #172033 0%,
-            #273b63 100%
-        );
-        color: white;
-        border-radius: 16px;
-        padding: 22px 26px;
-        box-shadow: 0 8px 25px rgba(23, 32, 51, .15);
-    }
-
-    .report-header h2 {
-        margin: 0;
-        font-weight: 700;
-    }
-
-    .report-header .meta {
-        margin-top: 6px;
-        color: rgba(255,255,255,.72);
-        font-size: 13px;
+        min-height: 100vh;
+        padding: 24px;
     }
 
     .report-card {
-        background: white;
-        border: 1px solid #e8ecf3;
-        border-radius: 14px;
-        box-shadow: 0 4px 14px rgba(30,45,70,.05);
-        overflow: hidden;
-    }
-
-    .report-toolbar {
-        padding: 14px 18px;
-        border-bottom: 1px solid #edf0f5;
         background: #fff;
+        border: 1px solid #e7eaf0;
+        border-radius: 12px;
+        padding: 22px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(23, 32, 51, .04);
     }
 
-    .report-table-wrapper {
-        overflow: auto;
-        max-height: calc(100vh - 280px);
+    .report-heading {
+        background: linear-gradient(120deg, #172033, #273b63);
+        color: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
     }
 
-    .report-table {
-        margin: 0;
+    .report-heading .text-muted {
+        color: #d5dced !important;
+    }
+
+    .report-table-wrap {
+        overflow-x: auto;
+    }
+
+    .report-table-wrap th,
+    .report-table-wrap td {
+        white-space: nowrap;
+        padding: 10px 12px;
         font-size: 13px;
     }
 
-    .report-table th {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        background: #f8fafc;
-        color: #4b5563;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .03em;
-        white-space: nowrap;
-        border-bottom: 1px solid #dfe4ec;
-        padding: 11px 13px;
+    .report-table-wrap thead th {
+        background: #f0f3f9;
     }
 
-    .report-table td {
-        white-space: nowrap;
-        padding: 10px 13px;
-        border-color: #edf0f5;
+    .filter-label {
+        font-weight: 600;
+        margin-bottom: 7px;
     }
 
-    .report-table tbody tr:hover {
-        background: #f8fafc;
-    }
-
-    .result-count {
-        font-size: 12px;
-        color: #687386;
-    }
-
-    .sql-card {
-        background: #111827;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    .sql-header {
-        padding: 10px 14px;
-        color: #cbd5e1;
-        border-bottom: 1px solid #263244;
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .sql-code {
-        padding: 15px;
-        color: #d1d5db;
-        font-family: monospace;
-        font-size: 12px;
-        line-height: 1.6;
-        max-height: 350px;
-        overflow: auto;
+    .report-sql {
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #172033;
+        color: #e5edf9;
+        padding: 16px;
+        border-radius: 8px;
+        font-size: 12px;
     }
-
-    .error-card {
-        border-radius: 14px;
-        border: 1px solid #f1c4c4;
-        background: #fff5f5;
-        padding: 20px;
-        color: #842029;
-    }
-
-    @media(max-width:768px) {
-
-        .report-page {
-            padding: 15px;
-        }
-
-    }
-
 </style>
-
 
 <div class="report-page">
 
-    {{-- ========================================================= --}}
-    {{-- HEADER --}}
-    {{-- ========================================================= --}}
+    <div class="report-heading">
+        <h3 class="mb-2">
+            {{ $query->query_name }}
+        </h3>
 
-    <div class="report-header mb-4">
-
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-
-            <div>
-
-                <h2>
-
-                    <i class="bi bi-bar-chart-line me-2"></i>
-
-                    {{ $query->query_name }}
-
-                </h2>
-
-                <div class="meta">
-
-                    @if($query->report)
-
-                        <i class="bi bi-file-earmark-text me-1"></i>
-
-                        {{ $query->report->name }}
-
-                        <span class="mx-2">•</span>
-
-                    @endif
-
-                    Query #{{ $query->id }}
-
-                    <span class="mx-2">•</span>
-
-                    {{ $query->query_mode === 'custom'
-                        ? 'Custom SQL'
-                        : 'Visual Builder'
-                    }}
-
-                </div>
-
-            </div>
-
-
-            <div class="d-flex gap-2">
-
-                @if($query->report)
-
-                    <a
-                        href="{{ route(
-                            'reports.library.query-builder',
-                            $query->report
-                        ) }}"
-                        class="btn btn-light btn-sm"
-                    >
-
-                        <i class="bi bi-pencil-square me-1"></i>
-
-                        Edit Query
-
-                    </a>
-
-                @endif
-
-
-                <a
-                    href="{{ route('report-queries.index') }}"
-                    class="btn btn-outline-light btn-sm"
-                >
-
-                    <i class="bi bi-arrow-left me-1"></i>
-
-                    All Queries
-
-                </a>
-
-            </div>
-
+        <div class="text-muted">
+            {{ $query->report->name ?? 'Saved Report' }}
         </div>
 
+        <div class="mt-3 d-flex flex-wrap gap-2">
+            <a
+                href="{{ url()->previous() }}"
+                class="btn btn-light btn-sm"
+            >
+                Back
+            </a>
+        </div>
     </div>
 
 
-    {{-- ========================================================= --}}
-    {{-- ERROR --}}
-    {{-- ========================================================= --}}
-
-    @if(isset($error))
-
-        <div class="error-card mb-4">
-
-            <div class="fw-bold mb-2">
-
-                <i class="bi bi-exclamation-triangle me-2"></i>
-
-                Query execution failed
-
-            </div>
-
-            <div class="small">
-
-                {{ $error }}
-
-            </div>
-
-        </div>
-
-    @else
-
-        {{-- ===================================================== --}}
-        {{-- RESULT --}}
-        {{-- ===================================================== --}}
-
-        <div class="report-card mb-4">
-
-            <div class="report-toolbar">
-
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-
-                    <div>
-
-                        <strong>
-                            Query Result
-                        </strong>
-
-                        <span class="result-count ms-2">
-
-                            {{ count($rows) }}
-                            {{ count($rows) === 1 ? 'row' : 'rows' }}
-
-                        </span>
-
-                    </div>
-
-                    <div>
-
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-outline-secondary"
-                            onclick="exportTableToCsv()"
-                        >
-
-                            <i class="bi bi-download me-1"></i>
-
-                            Export CSV
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            @if(!empty($rows))
-
-                <div class="report-table-wrapper">
-
-                    <table
-                        class="table report-table"
-                        id="reportResultTable"
-                    >
-
-                        <thead>
-
-                            <tr>
-
-                                <th>
-                                    #
-                                </th>
-
-                                @foreach($columns as $column)
-
-                                    <th>
-                                        {{ $column }}
-                                    </th>
-
-                                @endforeach
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                            @foreach($rows as $index => $row)
-
-                                <tr>
-
-                                    <td class="text-muted">
-                                        {{ $index + 1 }}
-                                    </td>
-
-                                    @foreach($columns as $column)
-
-                                        <td>
-
-                                            @php
-                                                $value = $row->{$column} ?? null;
-                                            @endphp
-
-                                            @if($value === null)
-
-                                                <span class="text-muted">
-                                                    —
-                                                </span>
-
-                                            @else
-
-                                                {{ $value }}
-
-                                            @endif
-
-                                        </td>
-
-                                    @endforeach
-
-                                </tr>
-
-                            @endforeach
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            @else
-
-                <div class="text-center py-5">
-
-                    <i
-                        class="bi bi-inbox"
-                        style="font-size:42px; opacity:.3;"
-                    ></i>
-
-                    <h5 class="mt-3">
-                        No records found
-                    </h5>
-
-                    <p class="text-muted mb-0">
-                        The query executed successfully but returned no rows.
-                    </p>
-
-                </div>
-
-            @endif
-
+    @if($error)
+
+        <div class="alert alert-danger">
+            <strong>Unable to generate the report.</strong>
+            <div class="mt-1">{{ $error }}</div>
         </div>
 
     @endif
 
 
-    {{-- ========================================================= --}}
-    {{-- SQL --}}
-    {{-- ========================================================= --}}
 
-    <div class="sql-card">
+    @if($runtimeFilters->isNotEmpty())
 
-        <div class="sql-header">
+    <div class="report-card">
 
-            <i class="bi bi-code-slash me-2"></i>
+        <h5 class="mb-1">Report Filters</h5>
 
-            Executed SQL
+        <p class="text-muted small mb-4">
+            Change the filters below and apply them to refresh the report.
+        </p>
+
+        <form
+            method="GET"
+            action="{{ route('report-queries.report', $query) }}"
+        >
+
+            <div class="row g-3">
+
+                @foreach($runtimeFilters as $filterIndex => $filter)
+
+                    @php
+                        $column = $filter['column'] ?? '';
+                        $label  = $filter['label']
+                            ?: \Illuminate\Support\Str::headline(
+                                str_replace('.', ' ', $column)
+                            );
+
+                        $type = $filter['type'] ?? 'text';
+
+                        // Safely extract selected value from request
+                        $rawCurrent = request()->input('filters.' . $filterIndex);
+                        
+                        if (is_array($rawCurrent) && array_key_exists('value', $rawCurrent)) {
+                            $current = $rawCurrent['value'];
+                        } else {
+                            $current = $rawCurrent;
+                        }
+
+                        $options = $filter['options'] ?? [];
+                    @endphp
+
+                    {{-- Metadata Hidden Inputs sent to Controller --}}
+                    <input type="hidden" name="filters[{{ $filterIndex }}][column]" value="{{ $column }}">
+                    <input type="hidden" name="filters[{{ $filterIndex }}][type]" value="{{ $type }}">
+                    <input type="hidden" name="filters[{{ $filterIndex }}][label]" value="{{ $label }}">
+
+                    {{-- DATE RANGE --}}
+                    @if($type === 'date_range')
+
+                        @php
+                            $current = is_array($current) ? $current : [];
+                        @endphp
+
+                        <div class="col-md-6">
+
+                            <label class="filter-label">
+                                {{ $label }}
+                            </label>
+
+                            <div class="row g-2">
+
+                                <div class="col">
+                                    <label class="form-label small text-muted">
+                                        From Date
+                                    </label>
+
+                                    <input
+                                        type="date"
+                                        class="form-control"
+                                        name="filters[{{ $filterIndex }}][value][from]"
+                                        value="{{ is_string($current['from'] ?? null) ? $current['from'] : '' }}"
+                                    >
+                                </div>
+
+                                <div class="col">
+                                    <label class="form-label small text-muted">
+                                        To Date
+                                    </label>
+
+                                    <input
+                                        type="date"
+                                        class="form-control"
+                                        name="filters[{{ $filterIndex }}][value][to]"
+                                        value="{{ is_string($current['to'] ?? null) ? $current['to'] : '' }}"
+                                    >
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    {{-- NUMBER RANGE --}}
+                    @elseif($type === 'number_range')
+
+                        @php
+                            $current = is_array($current) ? $current : [];
+                        @endphp
+
+                        <div class="col-md-6">
+
+                            <label class="filter-label">
+                                {{ $label }}
+                            </label>
+
+                            <div class="row g-2">
+
+                                <div class="col">
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        class="form-control"
+                                        name="filters[{{ $filterIndex }}][value][min]"
+                                        placeholder="Minimum"
+                                        value="{{ is_scalar($current['min'] ?? null) ? $current['min'] : '' }}"
+                                    >
+                                </div>
+
+                                <div class="col">
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        class="form-control"
+                                        name="filters[{{ $filterIndex }}][value][max]"
+                                        placeholder="Maximum"
+                                        value="{{ is_scalar($current['max'] ?? null) ? $current['max'] : '' }}"
+                                    >
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    {{-- MULTI-SELECT --}}
+                    @elseif($type === 'multi_select')
+
+                        @php
+                            // Flatten and sanitize array to guarantee standard strings/integers only
+                            $selectedValues = \Illuminate\Support\Arr::flatten(is_array($current) ? $current : [$current]);
+                            $selectedStrings = array_filter(array_map(function ($item) {
+                                return is_scalar($item) ? (string) $item : null;
+                            dd($selectedStrings,$selectedValues);
+                            }, $selectedValues), fn($item) => !is_null($item));
+                        @endphp
+
+                        <div class="col-md-4">
+
+                            <label class="filter-label">
+                                {{ $label }}
+                            </label>
+
+                            <select
+                                multiple
+                                class="form-select report-dynamic-select"
+                                name="filters[{{ $filterIndex }}][value][]"
+                                data-column="{{ $column }}"
+                                data-index="{{ $filterIndex }}"
+                            >
+
+                                @foreach($options as $option)
+
+                                    <option
+                                        value="{{ $option }}"
+                                        @selected(in_array((string) $option, $selectedStrings, true))
+                                    >
+                                        {{ $option }}
+                                    </option>
+
+                                @endforeach
+
+                            </select>
+
+                        </div>
+
+                    {{-- SINGLE SELECT --}}
+                    @elseif($type === 'select')
+
+                        <div class="col-md-4">
+
+                            <label class="filter-label">
+                                {{ $label }}
+                            </label>
+
+                            <select
+                                class="form-select report-dynamic-select"
+                                name="filters[{{ $filterIndex }}][value]"
+                                data-column="{{ $column }}"
+                                data-index="{{ $filterIndex }}"
+                            >
+
+                                <option value="">All</option>
+
+                                @foreach($options as $option)
+
+                                    <option
+                                        value="{{ $option }}"
+                                        @selected(is_scalar($current) && (string) $current === (string) $option)
+                                    >
+                                        {{ $option }}
+                                    </option>
+
+                                @endforeach
+
+                            </select>
+
+                        </div>
+
+                    {{-- SEARCH TEXT --}}
+                    @else
+
+                        <div class="col-md-4">
+
+                            <label class="filter-label">
+                                {{ $label }}
+                            </label>
+
+                            <input
+                                type="text"
+                                class="form-control"
+                                name="filters[{{ $filterIndex }}][value]"
+                                value="{{ is_scalar($current) ? $current : '' }}"
+                                placeholder="Search {{ strtolower($label) }}..."
+                            >
+
+                        </div>
+
+                    @endif
+
+                @endforeach
+
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    <i class="bi bi-search me-1"></i>
+                    Apply Filters
+                </button>
+
+                <a
+                    href="{{ route('report-queries.report', $query) }}"
+                    class="btn btn-light border"
+                >
+                    Reset
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+@endif
+
+
+    {{-- RESULTS --}}
+
+    <div class="report-card">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+
+            <div>
+                <h5 class="mb-1">Report Results</h5>
+
+                <div class="text-muted small">
+                    {{ count($results) }} row(s) returned; maximum 500 rows.
+                </div>
+            </div>
+
+            <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm"
+                onclick="downloadReportCsv()"
+                @disabled(empty($results))
+            >
+                <i class="bi bi-download me-1"></i>
+                Export CSV
+            </button>
 
         </div>
 
-        <div class="sql-code">{{ $sql }}</div>
+
+        @if(!empty($results))
+
+            <div class="report-table-wrap">
+
+                <table class="table table-bordered table-hover align-middle" id="reportResultsTable">
+
+                    <thead>
+                        <tr>
+                            @foreach($resultColumns as $column)
+                                <th>{{ $column }}</th>
+                            @endforeach
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach($results as $row)
+                            <tr>
+                                @foreach($resultColumns as $column)
+                                    <td>{{ data_get($row, $column) }}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        @else
+
+            @if(!$error)
+                <div class="text-center text-muted py-5">
+                    No records found for the selected filters.
+                </div>
+            @endif
+
+        @endif
 
     </div>
+
+
+    {{-- GENERATED SQL --}}
+
+    @if($sql)
+
+        <div class="report-card">
+
+            <h6 class="mb-3">Executed SQL</h6>
+
+            <pre class="report-sql">{{ $sql }}</pre>
+
+        </div>
+
+    @endif
 
 </div>
 
 
-<script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 
-function exportTableToCsv()
-{
-    const table =
-        document.getElementById(
-            'reportResultTable'
-        );
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    document.querySelectorAll('.report-dynamic-select').forEach(function (element) {
+
+        const column = element.dataset.column;
+        const index = element.dataset.index;
+
+        const configuredOptions = element.options.length > 0;
+        const selectedValues = Array.from(element.selectedOptions)
+            .map(option => option.value);
+
+        /*
+         * When the builder has no explicit options,
+         * retrieve unique values from the saved query.
+         */
+        const loadOptions = configuredOptions
+            ? Promise.resolve([])
+            : fetch(
+                @json(route('report-queries.filter-options', $query)) +
+                '?column=' + encodeURIComponent(column)
+            ).then(response => {
+                if (!response.ok) {
+                    throw new Error('Unable to load dropdown options.');
+                }
+                return response.json();
+            }).then(data => data.options || []);
+
+        loadOptions.then(options => {
+
+            options.forEach(option => {
+
+                const exists = Array.from(element.options)
+                    .some(existing => existing.value === String(option.value));
+
+                if (!exists) {
+                    element.add(new Option(
+                        option.label,
+                        option.value,
+                        false,
+                        false
+                    ));
+                }
+            });
+
+            const tomSelect = new TomSelect(element, {
+                create: false,
+                maxItems: element.multiple ? null : 1,
+                plugins: element.multiple ? ['remove_button'] : [],
+                placeholder: 'Search or select...',
+                searchField: ['text', 'value']
+            });
+
+            /*
+             * Restore selections after asynchronous options load.
+             */
+            if (selectedValues.length) {
+                tomSelect.setValue(selectedValues, true);
+            }
+
+        }).catch(error => {
+            console.error('Filter option loading failed:', error);
+        });
+
+    });
+
+});
+
+
+function downloadReportCsv() {
+
+    const table = document.getElementById('reportResultsTable');
 
     if (!table) {
         return;
     }
 
-    const rows =
-        Array.from(
-            table.querySelectorAll('tr')
-        );
+    const rows = Array.from(table.querySelectorAll('tr'));
 
-    const csv =
-        rows
-            .map(row => {
+    const csv = rows.map(row => {
 
-                const cells =
-                    Array.from(
-                        row.querySelectorAll(
-                            'th, td'
-                        )
-                    );
-
-                return cells
-                    .map(cell => {
-
-                        let value =
-                            cell.innerText
-                                .replace(
-                                    /"/g,
-                                    '""'
-                                )
-                                .trim();
-
-                        return `"${value}"`;
-
-                    })
-                    .join(',');
-
+        return Array.from(row.querySelectorAll('th, td'))
+            .map(cell => {
+                const value = cell.innerText.replace(/"/g, '""');
+                return '"' + value + '"';
             })
-            .join('\n');
+            .join(',');
 
-    const blob =
-        new Blob(
-            [csv],
-            {
-                type: 'text/csv;charset=utf-8;'
-            }
-        );
+    }).join('\r\n');
 
-    const url =
-        URL.createObjectURL(blob);
+    const blob = new Blob(
+        ['\uFEFF' + csv],
+        { type: 'text/csv;charset=utf-8;' }
+    );
 
-    const link =
-        document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
 
     link.href = url;
-
-    link.download =
-        @json($query->query_name)
-        + '.csv';
-
-    document.body.appendChild(link);
-
+    link.download = 'report.csv';
     link.click();
-
-    document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
 }
-
 </script>
 
 @endsection
