@@ -3534,8 +3534,8 @@ function loadSavedQuery() {
             addColumnRow(row)
         );
 
-
-    (savedQuery.filters ?? [])
+    const appliedFilters = savedQuery.filters.filter(filter => filter.runtime != true);
+    (appliedFilters ?? [])
         .forEach(row =>
             addFilterRow(row)
         );
@@ -4256,7 +4256,7 @@ function renderReportFiltersToShow() {
 
     // Filter array to include only elements where runtime is strictly true
     const activeFilters = reportFilters.filter(filter => filter.runtime === true);
-    console.log(activeFilters);
+    
 
     
     activeFilters.forEach((filter, index) => {

@@ -288,6 +288,347 @@
 
             </div>
 
+            {{-- =========================================================
+     DYNAMIC REPORT FILTERS
+========================================================= --}}
+
+@php
+
+    $savedFilters =
+        $query->filters_json ?? [];
+
+    $reportFilters =
+        collect($savedFilters)
+            ->filter(function ($filter) {
+                return !empty($filter['runtime']);
+            });
+
+@endphp
+
+
+@if($reportFilters->count())
+
+    <div class="report-card mb-4">
+
+        <div class="report-card-header">
+
+            <div>
+                <h5 class="mb-1">
+                    <i class="bi bi-funnel me-2"></i>
+                    Report Filters
+                </h5>
+
+                <div class="text-muted small">
+                    Filter the report data without changing the saved query.
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="report-card-body">
+
+            <form
+                method="GET"
+                action="{{ route('report-queries.report', $query) }}"
+                id="reportFilterForm"
+            >
+
+                <div class="row g-3">
+
+                    @foreach($reportFilters as $filterIndex => $filter)
+
+                        @php
+
+                            $column =
+                                $filter['column'] ?? '';
+
+                            $type =
+                                $filter['type'] ?? 'search';
+
+                            $label =
+                                $filter['label']
+                                ?? \Illuminate\Support\Str::headline(
+                                    str_replace(
+                                        '.',
+                                        ' ',
+                                        $column
+                                    )
+                                );
+
+                            $current =
+                                request(
+                                    'filters.' . $filterIndex
+                                );
+
+                        @endphp
+
+
+                        {{-- DATE RANGE --}}
+                        @if($type === 'date_range')
+
+                            @php
+
+                                $dateValue =
+                                    is_array($current)
+                                        ? $current
+                                        : [];
+
+                            @endphp
+
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    {{ $label }}
+                                </label>
+
+                                <div class="row g-2">
+
+                                    <div class="col">
+
+                                        <label class="small text-muted">
+                                            From
+                                        </label>
+
+                                        <input
+                                            type="date"
+                                            name="filters[{{ $filterIndex }}][from]"
+                                            class="form-control"
+                                            value="{{ $dateValue['from'] ?? '' }}"
+                                        >
+
+                                    </div>
+
+
+                                    <div class="col">
+
+                                        <label class="small text-muted">
+                                            To
+                                        </label>
+
+                                        <input
+                                            type="date"
+                                            name="filters[{{ $filterIndex }}][to]"
+                                            class="form-control"
+                                            value="{{ $dateValue['to'] ?? '' }}"
+                                        >
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                        {{-- MULTI SELECT --}}
+                        @elseif($type === 'multi_select')
+
+                            @php
+
+                                $selected =
+                                    is_array($current)
+                                        ? $current
+                                        : [];
+
+                                $fixedOptions =
+                                    $filter['options'] ?? [];
+
+                            @endphp
+
+
+                            <div class="col-md-4">
+
+                                <label class="form-label fw-semibold">
+                                    {{ $label }}
+                                </label>
+
+                                <select
+                                    name="filters[{{ $filterIndex }}][]"
+                                    class="form-select dynamic-filter-select"
+                                    data-column="{{ $column }}"
+                                    multiple
+                                    style="min-height: 46px;"
+                                >
+
+                                    @foreach($fixedOptions as $option)
+
+                                        <option
+                                            value="{{ $option }}"
+                                            @selected(
+                                                in_array(
+                                                    (string) $option,
+                                                    array_map(
+                                                        'strval',
+                                                        $selected
+                                                    ),
+                                                    true
+                                                )
+                                            )
+                                        >
+                                            {{ $option }}
+                                        </option>
+
+                                    @endforeach
+
+                                </select>
+
+                                <div class="small text-muted mt-1">
+                                    Select one or more values
+                                </div>
+
+                            </div>
+
+
+                        {{-- SELECT --}}
+                        @elseif($type === 'select')
+
+                            @php
+
+                                $fixedOptions =
+                                    $filter['options'] ?? [];
+
+                            @endphp
+
+                            <div class="col-md-4">
+
+                                <label class="form-label fw-semibold">
+                                    {{ $label }}
+                                </label>
+
+                                <select
+                                    name="filters[{{ $filterIndex }}]"
+                                    class="form-select"
+                                >
+
+                                    <option value="">
+                                        All
+                                    </option>
+
+                                    @foreach($fixedOptions as $option)
+
+                                        <option
+                                            value="{{ $option }}"
+                                            @selected(
+                                                (string) $current ===
+                                                (string) $option
+                                            )
+                                        >
+                                            {{ $option }}
+                                        </option>
+
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+
+                        {{-- NUMBER RANGE --}}
+                        @elseif($type === 'number_range')
+
+                            @php
+
+                                $numberValue =
+                                    is_array($current)
+                                        ? $current
+                                        : [];
+
+                            @endphp
+
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    {{ $label }}
+                                </label>
+
+                                <div class="row g-2">
+
+                                    <div class="col">
+
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            name="filters[{{ $filterIndex }}][min]"
+                                            class="form-control"
+                                            placeholder="Minimum"
+                                            value="{{ $numberValue['min'] ?? '' }}"
+                                        >
+
+                                    </div>
+
+                                    <div class="col">
+
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            name="filters[{{ $filterIndex }}][max]"
+                                            class="form-control"
+                                            placeholder="Maximum"
+                                            value="{{ $numberValue['max'] ?? '' }}"
+                                        >
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                        {{-- SEARCH --}}
+                        @else
+
+                            <div class="col-md-4">
+
+                                <label class="form-label fw-semibold">
+                                    {{ $label }}
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="filters[{{ $filterIndex }}]"
+                                    class="form-control"
+                                    value="{{ is_array($current) ? '' : $current }}"
+                                    placeholder="Search {{ strtolower($label) }}..."
+                                >
+
+                            </div>
+
+                        @endif
+
+                    @endforeach
+
+                </div>
+
+
+                <div class="d-flex gap-2 mt-4">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        <i class="bi bi-search me-1"></i>
+                        Apply Filters
+                    </button>
+
+
+                    <a
+                        href="{{ route('report-queries.report', $query) }}"
+                        class="btn btn-light border"
+                    >
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+                        Reset
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+@endif
+
 
             @if(!empty($rows))
 
@@ -392,19 +733,16 @@
     {{-- SQL --}}
     {{-- ========================================================= --}}
 
-    <div class="sql-card">
-
-        <div class="sql-header">
-
-            <i class="bi bi-code-slash me-2"></i>
-
-            Executed SQL
-
-        </div>
-
-        <div class="sql-code">{{ $sql }}</div>
-
+  <div class="sql-card">
+    <div class="sql-header">
+        <i class="bi bi-code-slash me-2"></i>
+        Executed SQL
     </div>
+    
+    <div class="sql-code">
+        <pre class="m-0"><code>{{ is_array($sql) ? json_encode($sql, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : $sql }}</code></pre>
+    </div>
+</div>
 
 </div>
 

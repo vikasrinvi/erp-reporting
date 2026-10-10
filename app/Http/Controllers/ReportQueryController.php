@@ -2899,12 +2899,14 @@ protected function applyRuntimeFiltersToSqlMostCorrect(string $sql, array $filte
  * @param array $filters
  * @return string
  */
-protected function applyRuntimeFiltersToSql(string $sql, array $filters): string
+protected function applyRuntimeFiltersToSqlBeforeDate(string $sql, array $filters): string
 {
+
     foreach ($filters as $filter) {
         $column = $filter['column'] ?? null;
         $type   = $filter['type'] ?? 'text';
         $value  = $filter['value'] ?? null;
+        $applyOuterSelect  = filter_var($filter['apply_outer_select'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if (!$column || $value === null || $value === '' || (is_array($value) && empty(array_filter($value)))) {
             continue;
@@ -2918,6 +2920,20 @@ protected function applyRuntimeFiltersToSql(string $sql, array $filters): string
         // 2. Build runtime condition
         $newCondition = null;
         $selectedValues = [];
+
+
+        if ($type === 'date_range') {
+            $fromDate =$value['from'] ?? null;
+            $toDate   =$value['to'] ?? null;
+
+            if ($fromDate &&$toDate) {
+                $escapedFrom = addslashes(trim($fromDate));
+                $escapedTo   = addslashes(trim($toDate));
+                $newCondition = "{$formattedColumn} BETWEEN '{$escapedFrom}' AND '{$escapedTo}'";
+            } elseif ($fromDate) {$escapedFrom = addslashes(trim($fromDate));$newCondition = "{$formattedColumn} >= '{$escapedFrom}'";
+            } elseif ($toDate) {$escapedTo = addslashes(trim($toDate));$newCondition = "{$formattedColumn} <= '{$escapedTo}'";
+            }
+        }
 
         if ($type === 'multi_select' || is_array($value)) {
             $selectedValues = array_values(array_filter(array_map(function ($v) {
@@ -2939,10 +2955,10 @@ protected function applyRuntimeFiltersToSql(string $sql, array $filters): string
         if (!$newCondition) {
             continue;
         }
-
+        
         // 3. Inject or Replace condition inside CTE WHERE clause
         $existingPattern = '/(?:`?[a-zA-Z0-9_]+`?\.)?`?' . preg_quote($rawColName, '/') . '`?\s+(?:IN\s*\([^)]+\)|=\s*\'[^\']*\')/i';
-
+      //  $existingPattern = '/(?:`?[a-zA-Z0-9_]+`?\.)?`?' . preg_quote($rawColName, '/') . '`?\s+(?:BETWEEN\s+\'[^\']+\'\s+AND\s+\'[^\']+\'|IN\s*\([^)]+\)|>=?\s*\'[^\']+\'(?:\s+AND\s+[^=]+\s*<\s*\'[^\']+\')?|=\s*\'[^\']*\')/i';
         if (preg_match($existingPattern,$sql)) {
             $sql = preg_replace($existingPattern, $newCondition,$sql, 1);
         } else {
@@ -2955,10 +2971,90 @@ protected function applyRuntimeFiltersToSql(string $sql, array $filters): string
         }
 
         // 4. Clean up outer SELECT list for filtered values (e.g., DIV_CODE)
-        if (!empty($selectedValues) && strtoupper($rawColName) === 'DIV_CODE') {
-            $sql =$this->filterOuterSelectColumns($sql,$selectedValues, 'DIV_CODE');
+        // if (!empty($selectedValues) && strtoupper($rawColName) === 'DIV_CODE') {
+        //     $sql =$this->filterOuterSelectColumns($sql,$selectedValues, 'DIV_CODE');
+        // }
+
+        // dd($selectedValues, $applyOuterSelect, $filters, $rawColName);
+
+
+        if (!empty($selectedValues)) {
+            $sql = $this->filterOuterSelectColumns($sql, $selectedValues,$rawColName);
         }
     }
+
+    return $sql;
+}
+
+protected function applyRuntimeFiltersToSql(string $sql, array $filters): string
+{
+    foreach ($filters as $filter) {
+        $column   = $filter['column'] ?? null;
+        $type     = $filter['type'] ?? 'text';
+        $value    = $filter['value'] ?? null;
+
+        if (!$column || $value === null || $value === '' || (is_array($value) && empty(array_filter($value, fn($v) => $v !== null && $v !== '')))) {
+            continue;
+        }
+
+        $colParts = explode('.', $column);
+        $formattedColumn = implode('.', array_map(fn($part) => '`' . trim($part, '`') . '`', $colParts));
+        $rawColName = end($colParts); 
+
+        $newCondition = null;
+
+        // 1. Dedicated Date Range Condition using BETWEEN
+        if ($type === 'date_range') {
+            $fromDate =$value['from'] ?? null;
+            $toDate   =$value['to'] ?? null;
+
+            if ($fromDate &&$toDate) {
+                $escapedFrom = addslashes(trim($fromDate));
+                $escapedTo   = addslashes(trim($toDate));
+                $newCondition = "{$formattedColumn} BETWEEN '{$escapedFrom}' AND '{$escapedTo}'";
+            } elseif ($fromDate) {$escapedFrom = addslashes(trim($fromDate));$newCondition = "{$formattedColumn} >= '{$escapedFrom}'";
+            } elseif ($toDate) {$escapedTo = addslashes(trim($toDate));$newCondition = "{$formattedColumn} <= '{$escapedTo}'";
+            }
+        } 
+        // 2. Multi-Select Condition (IN)
+        elseif ($type === 'multi_select' || is_array($value)) {
+            $selectedValues = array_values(array_filter(array_map(function ($v) {
+                return is_scalar($v) && trim((string)$v) !== '' ? trim((string) $v) : null;                         }, \Illuminate\Support\Arr::flatten((array)$value))));
+
+            if (!empty($selectedValues)) {$quotedValues = array_map(fn($v) => "'" . addslashes($v) . "'", $selectedValues);$newCondition = "{$formattedColumn} IN (" . implode(', ', $quotedValues) . ")";
+            }
+        } 
+        // 3. Search or Single Select Condition
+        else {
+            if (is_scalar($value) && trim((string)$value) !== '') {
+                $escaped = addslashes(trim((string)$value));
+                if ($type === 'search') {$newCondition = "{$formattedColumn} LIKE '\%{$escaped}%'";
+                } else {
+                    $newCondition = "{$formattedColumn} = '{$escaped}'";
+                }
+            }
+        }
+
+        if (!$newCondition) {
+            continue;
+        }
+
+        // Your exact original regex pattern
+        $existingPattern = '/(?:`?[a-zA-Z0-9_]+`?\.)?`?' . preg_quote($rawColName, '/') . '`?\s+(?:IN\s*\([^)]+\)|=\s*\'[^\']*\')/i';
+
+        if (preg_match($existingPattern,$sql)) {
+            $sql = preg_replace($existingPattern, $newCondition,$sql, 1);
+        } else {
+            if (preg_match('/GROUP\s+BY/i', $sql)) {
+                $sql = preg_replace('/(GROUP\s+BY)/i', "AND {$newCondition}\n      $1", $sql, 1);
+            } elseif (stripos($sql, 'WHERE') !== false) {$sql = preg_replace('/WHERE/i', "WHERE {$newCondition} AND", $sql, 1);
+            } else {
+                $sql .= "\nWHERE " . $newCondition;
+            }
+        }
+    }
+
+    
 
     return $sql;
 }

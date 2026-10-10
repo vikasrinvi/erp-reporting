@@ -1,0 +1,46 @@
+WITH base AS (
+    SELECT
+        ib.ITEM_CODE,
+        im.ITEM_NAME,
+        im.ITEM_CATG,
+        pm.MKTG_CATG,
+        ib.DIV_CODE,
+        SUM(ib.QTYISSUED) AS `QTY`,
+        DATE_FORMAT(ib.VRDATE, '%Y-%m') AS `YM`
+    FROM `itemtran_body` AS ib
+    INNER JOIN `item_mast` AS im
+        ON `ib`.`ITEM_CODE` = `im`.`ITEM_CODE`
+    INNER JOIN `prod_mast` AS pm
+        ON `im`.`PROD_CODE` = `pm`.`PROD_CODE`
+    WHERE
+        `ib`.`VRDATE` >= '2026-04-01'
+        AND `ib`.`VRDATE` < '2026-10-01'
+        AND `ib`.`QTYISSUED` IS NOT NULL
+        AND `pm`.`MKTG_CATG` = 'ASV'
+    GROUP BY
+        ib.ITEM_CODE,
+        im.ITEM_NAME,
+        im.ITEM_CATG,
+        pm.MKTG_CATG,
+        DATE_FORMAT(ib.VRDATE, '%Y-%m'),
+        ib.DIV_CODE
+    LIMIT 500
+)
+SELECT
+    `ITEM_CODE`,
+    `ITEM_NAME`,
+    `MKTG_CATG`,
+    `DIV_CODE`,
+    SUM( CASE WHEN `YM` = '2026-04' THEN `QTY` ELSE 0 END ) AS `APR`,
+    SUM( CASE WHEN `YM` = '2026-05' THEN `QTY` ELSE 0 END ) AS `MAY`,
+    SUM( CASE WHEN `YM` = '2026-06' THEN `QTY` ELSE 0 END ) AS `JUN`,
+    SUM( CASE WHEN `YM` = '2026-07' THEN `QTY` ELSE 0 END ) AS `JUL`,
+    SUM( CASE WHEN `YM` = '2026-08' THEN `QTY` ELSE 0 END ) AS `AUG`,
+    SUM( CASE WHEN `YM` = '2026-09' THEN `QTY` ELSE 0 END ) AS `SEP`
+FROM base
+GROUP BY
+    `ITEM_CODE`,
+    `ITEM_NAME`,
+    `MKTG_CATG`,
+    `DIV_CODE`
+;

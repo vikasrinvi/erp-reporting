@@ -110,7 +110,8 @@
 
 
 
-    @if($runtimeFilters->isNotEmpty())
+
+@if($runtimeFilters->isNotEmpty())
 
     <div class="report-card">
 
@@ -126,6 +127,21 @@
         >
 
             <div class="row g-3">
+
+                {{-- Date Format Selector including Complete Dates --}}
+                <div class="col-md-4">
+                    <label class="filter-label">Display Date Format</label>
+                    <select class="form-select" name="date_format">
+                        {{-- Complete / Full Dates --}}
+                        <option value="%Y-%m-%d" @selected(request('date_format') === '%Y-%m-%d')>YYYY-MM-DD (2026-04-01)</option>
+                        <option value="%d-%b-%Y" @selected(request('date_format') === '%d-%b-%Y')>DD-Mon-YYYY (01-Apr-2026)</option>
+                        
+                        {{-- Monthly Formats --}}
+                        <option value="%Y-%m" @selected(request('date_format', '%Y-%m') === '%Y-%m')>YYYY-MM (2026-04)</option>
+                        <option value="%b %Y" @selected(request('date_format') === '%b %Y')>Mon YYYY (Apr 2026)</option>
+                        <option value="%M %Y" @selected(request('date_format') === '%M %Y')>Month YYYY (April 2026)</option>
+                    </select>
+                </div>
 
                 @foreach($runtimeFilters as $filterIndex => $filter)
 
@@ -164,17 +180,16 @@
 
                         <div class="col-md-6">
 
-                            <label class="filter-label">
-                                {{ $label }}
-                            </label>
-
                             <div class="row g-2">
 
                                 <div class="col">
-                                    <label class="form-label small text-muted">
+                                <label class="filter-label">
+                                {{ $label }}
+                                    <span class="form-label small text-muted">
                                         From Date
-                                    </label>
-
+                                    </span>
+                                </label>
+                                
                                     <input
                                         type="date"
                                         class="form-control"
@@ -245,11 +260,9 @@
                     @elseif($type === 'multi_select')
 
                         @php
-                            // Flatten and sanitize array to guarantee standard strings/integers only
                             $selectedValues = \Illuminate\Support\Arr::flatten(is_array($current) ? $current : [$current]);
                             $selectedStrings = array_filter(array_map(function ($item) {
                                 return is_scalar($item) ? (string) $item : null;
-                            dd($selectedStrings,$selectedValues);
                             }, $selectedValues), fn($item) => !is_null($item));
                         @endphp
 
