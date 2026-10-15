@@ -594,7 +594,7 @@ class ReportQueryController extends Controller
                 );
             }
 
-            $results = DB::select($sql);
+            $results = $rows;
 
             return view(
                 'reports.queries.report',
@@ -3028,7 +3028,7 @@ protected function applyRuntimeFiltersToSql(string $sql, array $filters): string
         else {
             if (is_scalar($value) && trim((string)$value) !== '') {
                 $escaped = addslashes(trim((string)$value));
-                if ($type === 'search') {$newCondition = "{$formattedColumn} LIKE '\%{$escaped}%'";
+                if ($type === 'search') {$newCondition = "{$formattedColumn} LIKE '%{$escaped}%'";
                 } else {
                     $newCondition = "{$formattedColumn} = '{$escaped}'";
                 }
