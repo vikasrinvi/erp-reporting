@@ -1,12 +1,6 @@
+@extends('layouts.app')
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Machine Maintenance Register</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+@section('content')
 
     <style>
         body { background:#f4f6fa; color:#202a3c; font-family:Inter,system-ui,sans-serif; }
@@ -51,8 +45,7 @@
             @page { size:landscape; margin:10mm; }
         }
     </style>
-</head>
-<body>
+
 <div class="topbar">
     <div class="container-fluid px-4 d-flex justify-content-between align-items-center gap-3">
         <div>
@@ -106,6 +99,8 @@
                     </div>
                     <div class="col-xl-4 col-md-8">
                         <label class="form-label">Machine name / code *</label>
+                        <!-- Search input for filtering the machine dropdown -->
+                        <input type="text" id="machineSearchFilter" class="form-control mb-2" placeholder="Type to filter machines...">
                         <select name="equipment_code" id="equipmentSelect" class="form-select" required>
                             <option value="">Select machine</option>
                             @foreach($equipment as $machine)
@@ -208,7 +203,11 @@
         <div class="col-md-4 no-print">
             <div class="card panel stat h-100 d-flex justify-content-center">
                 <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" onclick="window.print()" class="btn btn-outline-dark"><i class="bi bi-printer me-1"></i>Print report</button>
+                <a href="{{ route('machine-maintenance.export', request()->query()) }}"
+                class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    Export Excel
+                </a>
                     <button type="submit" form="bulkForm" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Save Changes</button>
                 </div>
                 <div class="small-note mt-2">Edit multiple rows, then save them together.</div>
@@ -303,64 +302,95 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const machineSelect = document.getElementById('equipmentSelect');
+    document.addEventListener('DOMContentLoaded', function() {
+        const machineSelect = document.getElementById('equipmentSelect');
+        const machineSearchFilter = document.getElementById('machineSearchFilter');
 
-    function showMachineDetails() {
-        const option = machineSelect.options[machineSelect.selectedIndex];
-        const data = option && option.value ? option.dataset : {};
+        // Store original options for filtering
+        const allOptions = Array.from(machineSelect.options).slice(1);
 
-        document.getElementById('infoSection').textContent = data.section || '—';
-        document.getElementById('infoCapacity').textContent = data.capacity || '—';
-        document.getElementById('infoPurchase').textContent = data.purchase || '—';
-        document.getElementById('infoLastService').textContent = data.lastService || '—';
-        document.getElementById('infoServiceDue').textContent = data.serviceDue || '—';
-
-        // Use the master capacity as a convenient starting value.
-        const capacityInput = document.getElementById('installedCapacity');
-        if (data.capacity && capacityInput.value === '') {
-            const parsed = parseFloat(data.capacity);
-            if (!Number.isNaN(parsed)) capacityInput.value = parsed;
+        if (machineSearchFilter) {
+            machineSearchFilter.addEventListener('input', function() {
+                const term = this.value.toLowerCase().trim();
+                machineSelect.innerHTML = '<option value="">Select machine</option>';
+                
+                allOptions.forEach(opt => {
+                    if (opt.textContent.toLowerCase().includes(term)) {
+                        machineSelect.appendChild(opt.cloneNode(true));
+                    }
+                });
+            });
         }
 
-        updateNewPreview();
-    }
+        function showMachineDetails() {
+            const option = machineSelect.options[machineSelect.selectedIndex];
+            const data = option && option.value ? option.dataset : {};
 
-    function updateNewPreview() {
-        const capacity = parseFloat(document.getElementById('installedCapacity').value) || 0;
-        const hours = parseFloat(document.getElementById('workingHours').value) || 0;
-        const expected = capacity * hours / 8;
-        document.getElementById('expectedPreview').textContent = expected.toLocaleString(undefined, { maximumFractionDigits: 3 });
-    }
+            document.getElementById('infoSection').textContent = data.section || '—';
+            document.getElementById('infoCapacity').textContent = data.capacity || '—';
+            document.getElementById('infoPurchase').textContent = data.purchase || '—';
+            document.getElementById('infoLastService').textContent = data.lastService || '—';
+            document.getElementById('infoServiceDue').textContent = data.serviceDue || '—';
 
-    if (machineSelect) machineSelect.addEventListener('change', showMachineDetails);
-    ['installedCapacity', 'workingHours'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateNewPreview);
-    });
+            const capacityInput = document.getElementById('installedCapacity');
+            if (data.capacity && capacityInput.value === '') {
+                const parsed = parseFloat(data.capacity);
+                if (!Number.isNaN(parsed)) capacityInput.value = parsed;
+            }
 
-    // Live calculation for every edited table row.
-    document.querySelectorAll('.report-table tbody tr').forEach(row => {
-        const inputs = row.querySelectorAll('.calc-input');
-        if (inputs.length !== 3) return;
-
-        function calculateRow() {
-            const installed = parseFloat(inputs[0].value) || 0;
-            const hours = parseFloat(inputs[1].value) || 0;
-            const output = parseFloat(inputs[2].value) || 0;
-            const expected = installed * hours / 8;
-            const variance = output - expected;
-
-            const expectedCell = row.querySelector('.expected-cell');
-            const varianceCell = row.querySelector('.variance-cell');
-
-            expectedCell.textContent = expected.toLocaleString(undefined, { maximumFractionDigits: 3 });
-            varianceCell.textContent = variance.toLocaleString(undefined, { maximumFractionDigits: 3 });
-            varianceCell.classList.toggle('variance-negative', variance < 0);
-            varianceCell.classList.toggle('variance-positive', variance >= 0);
+            updateNewPreview();
         }
 
-        inputs.forEach(input => input.addEventListener('input', calculateRow));
+        function updateNewPreview() {
+            const capacity = parseFloat(document.getElementById('installedCapacity').value) || 0;
+            const hours = parseFloat(document.getElementById('workingHours').value) || 0;
+            const expected = (capacity * hours) / 8;
+            document.getElementById('expectedPreview').textContent = expected.toLocaleString(undefined, { maximumFractionDigits: 3 });
+        }
+
+        if (machineSelect) machineSelect.addEventListener('change', showMachineDetails);
+        ['installedCapacity', 'workingHours'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateNewPreview);
+        });
+
+        // Live calculation for every edited table row.
+        document.querySelectorAll('.report-table tbody tr').forEach(row => {
+            const inputs = row.querySelectorAll('.calc-input');
+            if (inputs.length !== 3) return;
+
+            function calculateRow() {
+                const installed = parseFloat(inputs[0].value) || 0;
+                const hours = parseFloat(inputs[1].value) || 0;
+                const output = parseFloat(inputs[2].value) || 0;
+                const expected = (installed * hours) / 8;
+                const variance = output - expected;
+
+                const expectedCell = row.querySelector('.expected-cell');
+                const varianceCell = row.querySelector('.variance-cell');
+
+                if (expectedCell) expectedCell.textContent = expected.toLocaleString(undefined, { maximumFractionDigits: 3 });
+                if (varianceCell) {
+                    varianceCell.textContent = variance.toLocaleString(undefined, { maximumFractionDigits: 3 });
+                    varianceCell.classList.toggle('variance-negative', variance < 0);
+                    varianceCell.classList.toggle('variance-positive', variance >= 0);
+                }
+            }
+
+            inputs.forEach(input => input.addEventListener('input', calculateRow));
+        });
+
+        const createForm = document.getElementById('createForm');
+        if (createForm) {
+            createForm.addEventListener('submit', function () {
+                const button = this.querySelector('button[type="submit"]');
+                if (button) {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+                }
+            });
+        }
     });
 
     function deleteRecord(url, vrno) {
@@ -369,12 +399,5 @@
         form.action = url;
         form.submit();
     }
-
-    document.getElementById('createForm').addEventListener('submit', function () {
-        const button = this.querySelector('button[type="submit"]');
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-    });
 </script>
-</body>
-</html>
+@endsection

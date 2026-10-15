@@ -42,12 +42,12 @@ class MachineMaintenanceController extends Controller
     {
         $query = MachineMaintenanceReport::query();
 
-        if ($request->filled('from_date')) {
-            $query->whereDate('report_date', '>=', $request->from_date);
+        if ($request->filled('from')) {
+            $query->whereDate('report_date', '>=', $request->from);
         }
 
-        if ($request->filled('to_date')) {
-            $query->whereDate('report_date', '<=', $request->to_date);
+        if ($request->filled('to')) {
+            $query->whereDate('report_date', '<=', $request->to);
         }
 
         if ($request->filled('machine')) {
@@ -73,7 +73,7 @@ class MachineMaintenanceController extends Controller
             'records' => $records,
             'equipment' => $this->equipmentList(),
             'filters' => $request->only([
-                'from_date', 'to_date', 'machine', 'vrno',
+                'from', 'to', 'machine', 'vrno',
             ]),
         ]);
     }
@@ -201,4 +201,199 @@ class MachineMaintenanceController extends Controller
             ->back()
             ->with('success', 'Maintenance entry deleted.');
     }
+
+
+    public function export343(Request $request)
+    {
+
+        $query = MachineMaintenanceReport::query();
+
+        if ($request->filled('from')) {
+            $query->whereDate('report_date', '>=', $request->from);
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('report_date', '<=', $request->to);
+        }
+
+        if ($request->filled('machine')) {
+            $machine = $request->machine;
+
+            $query->where(function ($q) use ($machine) {
+                $q->where('equipment_code', 'like', "%{$machine}%")
+                ->orWhere('machine_name', 'like', "%{$machine}%");
+            });
+        }
+
+        if ($request->filled('vrno')) {
+            $query->where('vrno', 'like', '%' . $request->vrno . '%');
+        }
+
+        $records = $query
+            ->orderBy('report_date')
+            ->orderBy('vrno')
+            ->get();
+
+        $filename = 'machine-maintenance-' . now()->format('Y-m-d-His') . '.csv';
+
+        return response()->streamDownload(function () use ($records, $request) {
+            $file = fopen('php://output', 'w');
+
+            // Make the CSV open correctly in Excel, including Indian text.
+            fwrite($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, ['MACHINE MAINTENANCE REPORT']);
+            fputcsv($file, ['From Date', $request->from ?: 'All']);
+            fputcsv($file, ['To Date', $request->to ?: 'All']);
+            fputcsv($file, ['Machine', $request->machine ?: 'All']);
+            fputcsv($file, ['VRNO', $request->vrno ?: 'All']);
+            fputcsv($file, []);
+
+            fputcsv($file, [
+                'SRNO',
+                'VRNO',
+                'Date',
+                'Section',
+                'Machine Code',
+                'Machine Name',
+                'Machine Capacity',
+                'Purchase Date',
+                'Last Service Date',
+                'Service Due Date',
+                'Installed Capacity (8 Hours)',
+                'Working Hours',
+                'Expected Output',
+                'Actual Output',
+                'Difference',
+                'Remarks',
+            ]);
+            $srno = 0;
+            foreach ($records as $record) {
+                $srno += 1;
+                fputcsv($file, [
+                    $srno,
+                    $record->vrno,
+                    $record->report_date?->format('Y-m-d'),
+                    $record->section_name,
+                    $record->equipment_code,
+                    $record->machine_name,
+                    $record->machine_capacity,
+                    $record->purchase_date?->format('Y-m-d'),
+                    $record->last_service_date?->format('Y-m-d'),
+                    $record->service_due_date?->format('Y-m-d'),
+                    $record->installed_capacity,
+                    $record->working_hours,
+                    $record->expected_output,
+                    $record->actual_output,
+                    $record->variance,
+                    $record->remarks,
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    
+    }
+    public function export(Request $request)
+    {
+        $query = MachineMaintenanceReport::query();
+
+        if ($request->filled('from')) {
+            $query->whereDate('report_date', '>=', $request->from);
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('report_date', '<=', $request->to);
+        }
+
+        if ($request->filled('machine')) {
+            $machine = $request->machine;
+
+            $query->where(function ($q) use ($machine) {
+                $q->where('equipment_code', 'like', "%{$machine}%")
+                ->orWhere('machine_name', 'like', "%{$machine}%");
+            });
+        }
+
+        if ($request->filled('vrno')) {
+            $query->where('vrno', 'like', '%' . $request->vrno . '%');
+        }
+
+        $records = $query
+            ->orderBy('report_date')
+            ->orderBy('vrno')
+            ->get();
+
+        $filename = 'machine-maintenance-' . now()->format('Y-m-d-His') . '.csv';
+
+        return response()->streamDownload(function () use ($records, $request) {
+            $file = fopen('php://output', 'w');
+
+            // Make the CSV open correctly in Excel, including Indian text.
+            fwrite($file, "\xEF\xBB\xBF");
+
+            // Top Header Block Layout
+            fputcsv($file, ['', '', 'MACHINE LOG BOOK']);
+            fputcsv($file, []);
+            
+            $fromDate = $request->from ? date('F Y', strtotime($request->from)) . ' (' . $request->from . ')' : 'All';
+            $toDate = $request->to ?: 'All';
+            fputcsv($file, ['Month - From - To:', $fromDate . ' to ' . $toDate]);
+            fputcsv($file, ['Supervisor-sign-off:', '___________________________']);
+            
+            fputcsv($file, []);
+            fputcsv($file, []);
+
+            // Table Column Headings
+            fputcsv($file, [
+                'SRNO',
+                'VRNO',
+                'Date',
+                'Section',
+                'Machine Code',
+                'Machine Name',
+                'Machine Capacity',
+                'Purchase Date',
+                'Last Service Date',
+                'Service Due Date',
+                'Installed Capacity (8 Hours)',
+                'Working Hours',
+                'Expected Output',
+                'Actual Output',
+                'Difference',
+                'Remarks',
+            ]);
+
+            $srno = 1;
+            foreach ($records as $record) {
+                fputcsv($file, [
+                    $srno++,
+                    $record->vrno,
+                    $record->report_date?->format('Y-m-d'),
+                    $record->section_name,
+                    $record->equipment_code,
+                    $record->machine_name,
+                    $record->machine_capacity,
+                    $record->purchase_date?->format('Y-m-d'),
+                    $record->last_service_date?->format('Y-m-d'),
+                    $record->service_due_date?->format('Y-m-d'),
+                    $record->installed_capacity,
+                    $record->working_hours,
+                    $record->expected_output,
+                    $record->actual_output,
+                    $record->variance,
+                    $record->remarks,
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    
+
 }
