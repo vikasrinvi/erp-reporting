@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReportLibraryController;
 use App\Http\Controllers\AsvReportController;
 use App\Http\Controllers\ReportQueryController;
+use App\Http\Controllers\MachineMaintenanceController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -158,7 +160,7 @@ Route::get('/', function () {
 
     });
 
-    Route::prefix('report-queries')
+     Route::prefix('report-queries')
         ->name('report-queries.')
         ->group(function () {
 
@@ -211,6 +213,18 @@ Route::get('/', function () {
         Route::get('/masters', function () {
             return view('masters.index');
         })->name('masters');
+
+
+
+        Route::prefix('machine-maintenance')
+            ->name('machine-maintenance.')
+            ->controller(MachineMaintenanceController::class)
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/', 'store')->name('store');
+                Route::post('/bulk-update', 'update')->name('update');
+                Route::delete('/{machineMaintenance}', 'destroy')->name('destroy');
+        });
 
     });
 
