@@ -208,6 +208,13 @@
                     <i class="bi bi-file-earmark-excel"></i>
                     Export Excel
                 </a>
+                <a href="{{ route('machine-maintenance.exportPdf', request()->query()) }}"
+                class="btn btn-success">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>
+                    Export PDF
+                </a>
+
+                
                     <button type="submit" form="bulkForm" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Save Changes</button>
                 </div>
                 <div class="small-note mt-2">Edit multiple rows, then save them together.</div>

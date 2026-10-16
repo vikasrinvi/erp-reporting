@@ -225,6 +225,9 @@ Route::get('/', function () {
                 Route::post('/bulk-update', 'update')->name('update');
                 Route::delete('/{machineMaintenance}', 'destroy')->name('destroy');
                 Route::get('/export', 'export')->name('export');
+                Route::get('/exportPdf', 'exportPdf')->name('exportPdf');
+
+                
         });
 
     });

@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class MachineMaintenanceController extends Controller
 {
@@ -394,6 +396,42 @@ class MachineMaintenanceController extends Controller
         ]);
     }
 
-    
+
+    public function exportPdf(Request $request)
+    {
+        $query = MachineMaintenanceReport::query();
+
+        if ($request->filled('from')) {
+            $query->whereDate('report_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('report_date', '<=', $request->to);
+        }
+        if ($request->filled('machine')) {
+            $machine = $request->machine;
+            $query->where(function ($q) use ($machine) {
+                $q->where('equipment_code', 'like', "%{$machine}%")
+                ->orWhere('machine_name', 'like', "%{$machine}%");
+            });
+        }
+        if ($request->filled('vrno')) {
+            $query->where('vrno', 'like', '%' . $request->vrno . '%');
+        }
+
+        $records = $query->orderBy('report_date')->orderBy('vrno')->get();
+
+        $pdf = Pdf::loadView('machine-maintenance.pdf', [
+            'records' => $records,
+            'from'    => $request->from,
+            'to'      => $request->to,
+        ]);
+
+        // Set to Landscape to cleanly fit all 16 columns
+        $pdf->setPaper('a4', 'landscape');
+
+        $filename = 'machine-log-book-' . now()->format('Y-m-d-His') . '.pdf';
+
+        return $pdf->download($filename);
+    }
 
 }

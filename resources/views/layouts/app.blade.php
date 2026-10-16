@@ -196,11 +196,11 @@
 
                     <li class="nav-item">
                         <a
-                            class="nav-link {{ request()->routeIs('masters') ? 'active' : '' }}"
-                            href="{{ route('masters') }}"
+                            class="nav-link {{ request()->routeIs('machine-maintenance.index') ? 'active' : '' }}"
+                            href="{{ route('machine-maintenance.index') }}"
                         >
                             <i class="bi bi-database me-1"></i>
-                            Masters
+                            Machine Log
                         </a>
                     </li>
 
