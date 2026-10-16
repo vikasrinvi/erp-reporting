@@ -5,6 +5,7 @@ use App\Http\Controllers\ReportLibraryController;
 use App\Http\Controllers\AsvReportController;
 use App\Http\Controllers\ReportQueryController;
 use App\Http\Controllers\MachineMaintenanceController;
+use App\Http\Controllers\MaintenanceTicketController;
 
 
 /*
@@ -228,6 +229,24 @@ Route::get('/', function () {
                 Route::get('/exportPdf', 'exportPdf')->name('exportPdf');
 
                 
+        });
+
+        // Add this group alongside your existing routes:
+        Route::prefix('maintenance-tickets')
+        ->name('maintenance-tickets.')
+        ->controller(MaintenanceTicketController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{maintenanceTicket}', 'show')->name('show');
+
+            Route::post('/{maintenanceTicket}/inspection', 'inspection')->name('inspection');
+            Route::post('/{maintenanceTicket}/expert', 'expert')->name('expert');
+            Route::post('/{maintenanceTicket}/approval', 'approval')->name('approval');
+            Route::post('/{maintenanceTicket}/start-repair', 'startRepair')->name('start-repair');
+            Route::post('/{maintenanceTicket}/complete-repair', 'completeRepair')->name('complete-repair');
+            Route::post('/{maintenanceTicket}/verify', 'verify')->name('verify');
         });
 
     });
