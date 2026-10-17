@@ -203,6 +203,15 @@
                             Machine Log
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a
+                            class="nav-link {{ request()->routeIs('maintenance-tickets.index') ? 'active' : '' }}"
+                            href="{{ route('maintenance-tickets.index') }}"
+                        >
+                            <i class="bi bi-tools me-1"></i>
+                            Maintenance Tickets
+                        </a>
+                    </li>
 
                 </ul>
 
