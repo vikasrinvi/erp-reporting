@@ -26,127 +26,151 @@
         <!-- Search & Filter Card -->
         
 <!-- Search & Filter Card -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-3">
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Maintenance Ticket Report</h5>
+        <small class="text-muted">
+            Filter tickets by date, machine, department and workflow status.
+        </small>
+    </div>
+
+    <div class="card-body">
         <form method="GET" action="{{ route('maintenance-tickets.index') }}">
             <div class="row g-3">
 
-                <div class="col-lg-3 col-md-4">
-                    <label class="form-label">From Date</label>
-                    <input type="date"
-                           name="from_date"
-                           class="form-control"
-                           value="{{ request('from_date') }}">
+                <div class="col-md-3">
+                    <label for="from_date" class="form-label">From Date</label>
+                    <input
+                        type="date"
+                        id="from_date"
+                        name="from_date"
+                        class="form-control"
+                        value="{{ request('from_date') }}"
+                    >
                 </div>
 
-                <div class="col-lg-3 col-md-4">
-                    <label class="form-label">To Date</label>
-                    <input type="date"
-                           name="to_date"
-                           class="form-control"
-                           value="{{ request('to_date') }}">
+                <div class="col-md-3">
+                    <label for="to_date" class="form-label">To Date</label>
+                    <input
+                        type="date"
+                        id="to_date"
+                        name="to_date"
+                        class="form-control"
+                        value="{{ request('to_date') }}"
+                    >
                 </div>
 
-                <div class="col-lg-3 col-md-4">
-                    <label class="form-label">Ticket Number</label>
-                    <input class="form-control"
-                           name="ticket_no"
-                           value="{{ request('ticket_no') }}"
-                           placeholder="Search ticket number">
+                <div class="col-md-3">
+                    <label for="ticket_no" class="form-label">Ticket Number</label>
+                    <input
+                        type="text"
+                        id="ticket_no"
+                        name="ticket_no"
+                        class="form-control"
+                        placeholder="e.g. MT-..."
+                        value="{{ request('ticket_no') }}"
+                    >
                 </div>
 
-                <div class="col-lg-3 col-md-4">
-                    <label class="form-label">Machine</label>
-                    <input class="form-control"
-                           name="machine"
-                           value="{{ request('machine') }}"
-                           placeholder="Machine code or name">
+                <div class="col-md-3">
+                    <label for="machine" class="form-label">Machine</label>
+                    <input
+                        type="text"
+                        id="machine"
+                        name="machine"
+                        class="form-control"
+                        placeholder="Machine name or code"
+                        value="{{ request('machine') }}"
+                    >
                 </div>
 
-                <div class="col-lg-3 col-md-4">
-                    <label class="form-label">Department</label>
-                    <input class="form-control"
-                           name="department"
-                           value="{{ request('department') }}"
-                           placeholder="Department name">
+                <div class="col-md-3">
+                    <label for="department" class="form-label">Department</label>
+                    <input
+                        type="text"
+                        id="department"
+                        name="department"
+                        class="form-control"
+                        value="{{ request('department') }}"
+                    >
                 </div>
 
-                <div class="col-lg-3 col-md-4">
-                    <label class="form-label">Requester</label>
-                    <input class="form-control"
-                           name="requester"
-                           value="{{ request('requester') }}"
-                           placeholder="Requester name">
+                <div class="col-md-3">
+                    <label for="requester" class="form-label">Requested By</label>
+                    <input
+                        type="text"
+                        id="requester"
+                        name="requester"
+                        class="form-control"
+                        value="{{ request('requester') }}"
+                    >
                 </div>
 
-                <div class="col-lg-2 col-md-4">
-                    <label class="form-label">Priority</label>
-                    <select name="priority" class="form-select">
+                <div class="col-md-3">
+                    <label for="priority" class="form-label">Priority</label>
+                    <select id="priority" name="priority" class="form-select">
                         <option value="">All Priorities</option>
-                        @foreach(['low', 'normal', 'high', 'critical'] as $priority)
-                            <option value="{{ $priority }}"
-                                @selected(request('priority') === $priority)>
-                                {{ ucfirst($priority) }}
+                        @foreach (['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'critical' => 'Critical'] as $value => $label)
+                            <option value="{{ $value }}" @selected(request('priority') === $value)>
+                                {{ $label }}
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="col-lg-2 col-md-4">
-                    <label class="form-label">Category</label>
-                    <select name="category" class="form-select">
+                <div class="col-md-3">
+                    <label for="category" class="form-label">Problem Category</label>
+                    <select id="category" name="category" class="form-select">
                         <option value="">All Categories</option>
-                        @foreach(['breakdown', 'spare', 'adjustment', 'inspection', 'other'] as $category)
-                            <option value="{{ $category }}"
-                                @selected(request('category') === $category)>
-                                {{ ucfirst($category) }}
+                        @foreach (['breakdown' => 'Breakdown', 'spare' => 'Spare Part', 'adjustment' => 'Adjustment', 'inspection' => 'Inspection', 'other' => 'Other'] as $value => $label)
+                            <option value="{{ $value }}" @selected(request('category') === $value)>
+                                {{ $label }}
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="col-lg-4 col-md-8">
-                    <label class="form-label">Workflow Status</label>
-                    <select name="status" class="form-select">
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Workflow Status</label>
+                    <select id="status" name="status" class="form-select">
                         <option value="">All Statuses</option>
-                        @foreach([
-                            'pending_inspection',
-                            'pending_expert',
-                            'pending_approval',
-                            'approved_for_repair',
-                            'in_repair',
-                            'pending_verification',
-                            'closed',
-                            'rejected'
-                        ] as $status)
-                            <option value="{{ $status }}"
-                                @selected(request('status') === $status)>
-                                {{ ucwords(str_replace('_', ' ', $status)) }}
+                        @foreach ([
+                            'pending_inspection' => 'Pending Inspection',
+                            'pending_expert' => 'Pending Expert Assessment',
+                            'pending_approval' => 'Pending Approval',
+                            'approved_for_repair' => 'Approved for Repair',
+                            'in_repair' => 'In Repair',
+                            'pending_verification' => 'Pending Verification',
+                            'closed' => 'Closed',
+                            'rejected' => 'Rejected',
+                        ] as $value => $label)
+                            <option value="{{ $value }}" @selected(request('status') === $value)>
+                                {{ $label }}
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="col-12 d-flex flex-wrap gap-2 align-items-end">
-                    <button type="submit" class="btn btn-dark">
-                        <i class="bi bi-funnel"></i> Apply Filters
-                    </button>
+            </div>
 
-                    <a href="{{ route('maintenance-tickets.index') }}"
-                       class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-counterclockwise"></i> Reset
-                    </a>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Apply Filters
+                </button>
 
-                    <button type="button"
-                            class="btn btn-success"
-                            onclick="window.location.href =
-                                '{{ route('maintenance-tickets.export') }}' +
-                                window.location.search">
-                        <i class="bi bi-file-earmark-excel"></i>
-                        Export All Matching Tickets
-                    </button>
-                </div>
+                <a href="{{ route('maintenance-tickets.index') }}"
+                   class="btn btn-outline-secondary">
+                    Reset
+                </a>
 
+                <button
+                    type="button"
+                    class="btn btn-success"
+                    onclick="window.location.href = '{{ route('maintenance-tickets.export') }}' + window.location.search"
+                >
+                    <i class="bi bi-file-earmark-excel"></i>
+                    Export Excel Workbook
+                </button>
             </div>
         </form>
     </div>

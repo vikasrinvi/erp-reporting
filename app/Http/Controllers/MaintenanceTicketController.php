@@ -7,6 +7,9 @@ use App\Models\MaintenanceTicketHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Exports\MaintenanceTicketReportQuery;
+use App\Exports\MaintenanceTicketsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MaintenanceTicketController extends Controller
 {
@@ -35,7 +38,7 @@ class MaintenanceTicketController extends Controller
     }
 
     
-    public function index(Request $request)
+    public function index35345(Request $request)
     {
         $request->validate([
             'from_date' => ['nullable', 'date'],
@@ -63,6 +66,32 @@ class MaintenanceTicketController extends Controller
         ]);
 
         $tickets = $this->filteredTickets($request)
+            ->orderByDesc('raised_at')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('maintenance-tickets.index', compact('tickets'));
+    }
+
+    public function index(Request $request)
+    {
+        $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'ticket_no' => ['nullable', 'string', 'max:100'],
+            'machine' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'requester' => ['nullable', 'string', 'max:255'],
+            'priority' => ['nullable', 'in:low,normal,high,critical'],
+            'category' => ['nullable', 'in:breakdown,spare,adjustment,inspection,other'],
+            'status' => [
+                'nullable',
+                'in:pending_inspection,pending_expert,pending_approval,approved_for_repair,in_repair,pending_verification,closed,rejected',
+            ],
+        ]);
+
+        $tickets = MaintenanceTicketReportQuery::build($request)
             ->orderByDesc('raised_at')
             ->orderByDesc('id')
             ->paginate(25)
@@ -123,7 +152,7 @@ class MaintenanceTicketController extends Controller
         return $query;
     }
 
-    public function export(Request $request)
+    public function export3234(Request $request)
     {
         $request->validate([
             'from_date' => ['nullable', 'date'],
@@ -321,6 +350,29 @@ class MaintenanceTicketController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'ticket_no' => ['nullable', 'string', 'max:100'],
+            'machine' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'requester' => ['nullable', 'string', 'max:255'],
+            'priority' => ['nullable', 'in:low,normal,high,critical'],
+            'category' => ['nullable', 'in:breakdown,spare,adjustment,inspection,other'],
+            'status' => [
+                'nullable',
+                'in:pending_inspection,pending_expert,pending_approval,approved_for_repair,in_repair,pending_verification,closed,rejected',
+            ],
+        ]);
+
+        return Excel::download(
+            new MaintenanceTicketsExport($request),
+            'maintenance-tickets-' . now()->format('Y-m-d_H-i-s') . '.xlsx'
+        );
     }
 
 
