@@ -6,6 +6,8 @@ use App\Http\Controllers\AsvReportController;
 use App\Http\Controllers\ReportQueryController;
 use App\Http\Controllers\MachineMaintenanceController;
 use App\Http\Controllers\MaintenanceTicketController;
+use App\Http\Controllers\ProfileController;
+
 
 
 /*
@@ -238,7 +240,9 @@ Route::get('/', function () {
         ->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
+            Route::get('/export','export')->name('export');
             Route::post('/', 'store')->name('store');
+
             Route::get('/{maintenanceTicket}', 'show')->name('show');
 
             Route::post('/{maintenanceTicket}/inspection', 'inspection')->name('inspection');
@@ -247,7 +251,15 @@ Route::get('/', function () {
             Route::post('/{maintenanceTicket}/start-repair', 'startRepair')->name('start-repair');
             Route::post('/{maintenanceTicket}/complete-repair', 'completeRepair')->name('complete-repair');
             Route::post('/{maintenanceTicket}/verify', 'verify')->name('verify');
+            
+            // Route::get('/export','export')->name('export');
+
+
+
+            
         });
+
+        
 
     });
 

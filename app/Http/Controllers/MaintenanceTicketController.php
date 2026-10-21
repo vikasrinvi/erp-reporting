@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class MaintenanceTicketController extends Controller
 {
-    public function index(Request $request)
+    public function index122(Request $request)
     {
         $query = MaintenanceTicket::query();
 
@@ -33,6 +33,296 @@ class MaintenanceTicketController extends Controller
 
         return view('maintenance-tickets.index', compact('tickets'));
     }
+
+    
+    public function index(Request $request)
+    {
+        $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'ticket_no' => ['nullable', 'string', 'max:255'],
+            'machine' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', Rule::in([
+                'pending_inspection',
+                'pending_expert',
+                'pending_approval',
+                'approved_for_repair',
+                'in_repair',
+                'pending_verification',
+                'closed',
+                'rejected',
+            ])],
+            'priority' => ['nullable', Rule::in([
+                'low', 'normal', 'high', 'critical',
+            ])],
+            'category' => ['nullable', Rule::in([
+                'breakdown', 'spare', 'adjustment', 'inspection', 'other',
+            ])],
+            'requester' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $tickets = $this->filteredTickets($request)
+            ->orderByDesc('raised_at')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('maintenance-tickets.index', compact('tickets'));
+    }
+
+    /**
+     * Shared report query. The same filters are used by the screen
+     * and the export, so the results remain consistent.
+     */
+    private function filteredTickets(Request $request)
+    {
+        $query = MaintenanceTicket::query();
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('raised_at', '>=', $request->input('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('raised_at', '<=', $request->input('to_date'));
+        }
+
+        if ($request->filled('ticket_no')) {
+            $query->where('ticket_no', 'like', '%' . $request->input('ticket_no') . '%');
+        }
+
+        if ($request->filled('machine')) {
+            $machine = $request->input('machine');
+
+            $query->where(function ($q) use ($machine) {
+                $q->where('machine_name', 'like', '%' . $machine . '%')
+                ->orWhere('equipment_code', 'like', '%' . $machine . '%');
+            });
+        }
+
+        if ($request->filled('department')) {
+            $query->where('department_name', 'like', '%' . $request->input('department') . '%');
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->input('priority'));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('problem_category', $request->input('category'));
+        }
+
+        if ($request->filled('requester')) {
+            $query->where('requester_name', 'like', '%' . $request->input('requester') . '%');
+        }
+
+        return $query;
+    }
+
+    public function export(Request $request)
+    {
+        $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'ticket_no' => ['nullable', 'string', 'max:255'],
+            'machine' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', Rule::in([
+                'pending_inspection',
+                'pending_expert',
+                'pending_approval',
+                'approved_for_repair',
+                'in_repair',
+                'pending_verification',
+                'closed',
+                'rejected',
+            ])],
+            'priority' => ['nullable', Rule::in([
+                'low', 'normal', 'high', 'critical',
+            ])],
+            'category' => ['nullable', Rule::in([
+                'breakdown', 'spare', 'adjustment', 'inspection', 'other',
+            ])],
+            'requester' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        // Do not paginate: export every record matching the filters.
+        $tickets = $this->filteredTickets($request)
+            ->with([
+                'spares' => fn ($q) => $q->orderBy('id'),
+                'histories' => fn ($q) => $q->orderBy('created_at'),
+            ])
+            ->orderBy('raised_at')
+            ->orderBy('id')
+            ->get();
+
+        $filename = 'maintenance-tickets-' . now()->format('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function () use ($tickets, $request) {
+            $file = fopen('php://output', 'w');
+
+            // UTF-8 BOM helps Excel display text correctly.
+            fwrite($file, "\xEF\xBB\xBF");
+
+            // Reduce the risk of spreadsheet formula injection.
+            $safe = function ($value) {
+                if ($value === null) {
+                    return '';
+                }
+
+                $value = (string) $value;
+
+                if (preg_match('/^[\s]*[=+\-@]/u', $value)) {
+                    return "'" . $value;
+                }
+
+                return $value;
+            };
+
+            $write = function (array $row) use ($file, $safe) {
+                fputcsv($file, array_map($safe, $row));
+            };
+
+            $write(['MACHINE MAINTENANCE TICKET REPORT']);
+            $write(['Report generated', now()->format('d-m-Y H:i:s')]);
+            $write(['From date', $request->input('from_date', 'All dates')]);
+            $write(['To date', $request->input('to_date', 'All dates')]);
+            $write(['Ticket number filter', $request->input('ticket_no', 'All')]);
+            $write(['Machine filter', $request->input('machine', 'All')]);
+            $write(['Department filter', $request->input('department', 'All')]);
+            $write(['Status filter', $request->input('status', 'All')]);
+            $write(['Priority filter', $request->input('priority', 'All')]);
+            $write(['Category filter', $request->input('category', 'All')]);
+            $write(['Requester filter', $request->input('requester', 'All')]);
+            $write(['Total matching tickets', $tickets->count()]);
+            $write([]);
+
+            $write([
+                'Ticket No', 'Raised Date', 'Status', 'Priority', 'Category',
+                'Machine Code', 'Machine Name', 'Department',
+                'Requester', 'Requester Contact', 'Production Affected',
+                'Problem Description', 'Request Remarks',
+
+                'Inspector', 'Inspection Date', 'Inspection Findings',
+                'Suspected Cause', 'Inspection Downtime Hours',
+                'Inspection Recommendation', 'Inspection Remarks',
+
+                'Expert', 'Assessment Date', 'Confirmed Root Cause',
+                'Corrective Action', 'Preventive Action', 'Estimated Total Cost',
+                'Expert Remarks',
+
+                'Approver', 'Approval Date', 'Approval Decision',
+                'Approved Budget', 'Approval Remarks',
+
+                'Technician', 'Repair Started', 'Repair Completed',
+                'Repair Work Done', 'Actual Total Cost', 'Actual Downtime Hours',
+
+                'Verifier', 'Verified At', 'Verification Result',
+                'Verification Remarks', 'Closed Date',
+
+                
+                
+                'Created At', 'Last Updated At',
+            ]);
+
+            foreach ($tickets as $ticket) {
+                $spareLines = [];
+
+                foreach ($ticket->spares as $spare) {
+                    $spareLines[] = implode(' | ', [
+                        'Part: ' . $spare->spare_name,
+                        'Part No: ' . ($spare->part_number ?: '-'),
+                        'Required: ' . ($spare->quantity_required ?? ''),
+                        'Approved: ' . ($spare->quantity_approved ?? ''),
+                        'Used: ' . ($spare->quantity_used ?? ''),
+                        'Estimated Unit Cost: ' . ($spare->estimated_unit_cost ?? ''),
+                        'Actual Unit Cost: ' . ($spare->actual_unit_cost ?? ''),
+                        'Remarks: ' . ($spare->remarks ?: '-'),
+                    ]);
+                }
+
+                $historyLines = [];
+
+                foreach ($ticket->histories as $history) {
+                    $historyLines[] = implode(' | ', array_filter([
+                        optional($history->created_at)->format('d-m-Y H:i'),
+                        $history->action,
+                        'By: ' . $history->performed_by,
+                        'From: ' . ($history->from_status ?: '-'),
+                        'To: ' . $history->to_status,
+                        'Remarks: ' . ($history->remarks ?: '-'),
+                    ]));
+                }
+
+                $write([
+                    $ticket->ticket_no,
+                    optional($ticket->raised_at)->format('d-m-Y'),
+                    $ticket->status,
+                    $ticket->priority,
+                    $ticket->problem_category,
+                    $ticket->equipment_code,
+                    $ticket->machine_name,
+                    $ticket->department_name,
+                    $ticket->requester_name,
+                    $ticket->requester_contact,
+                    $ticket->production_affected ? 'Yes' : 'No',
+                    $ticket->problem_description,
+                    $ticket->request_remarks,
+
+                    $ticket->inspector_name,
+                    optional($ticket->inspected_at)->format('d-m-Y H:i'),
+                    $ticket->inspection_findings,
+                    $ticket->suspected_cause,
+                    $ticket->downtime_hours,
+                    $ticket->inspection_recommendation,
+                    $ticket->inspection_remarks,
+
+                    $ticket->expert_name,
+                    optional($ticket->assessed_at)->format('d-m-Y H:i'),
+                    $ticket->root_cause,
+                    $ticket->corrective_action,
+                    $ticket->preventive_action,
+                    $ticket->estimated_cost,
+                    $ticket->expert_remarks,
+
+                    $ticket->approver_name,
+                    optional($ticket->approval_decided_at)->format('d-m-Y H:i'),
+                    $ticket->approval_decision,
+                    $ticket->approved_budget,
+                    $ticket->approval_remarks,
+
+                    $ticket->technician_name,
+                    optional($ticket->repair_started_at)->format('d-m-Y H:i'),
+                    optional($ticket->repair_completed_at)->format('d-m-Y H:i'),
+                    $ticket->repair_work_done,
+                    $ticket->actual_cost,
+                    $ticket->actual_downtime_hours,
+
+                    $ticket->verifier_name,
+                    optional($ticket->verified_at)->format('d-m-Y H:i'),
+                    $ticket->verification_result,
+                    $ticket->verification_remarks,
+                    $ticket->status === 'closed'
+                        ? optional($ticket->updated_at)->format('d-m-Y H:i')
+                        : '',
+
+                    // implode("\n", $spareLines),
+                    
+                    optional($ticket->created_at)->format('d-m-Y H:i'),
+                    optional($ticket->updated_at)->format('d-m-Y H:i'),
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
 
     public function create()
     {
@@ -72,7 +362,7 @@ class MaintenanceTicketController extends Controller
 
         $ticket = DB::transaction(function () use ($data, $machine, $request) {
             $lastId = (int) MaintenanceTicket::max('id') + 1;
-            $ticketNo = 'MT-' . now()->format('ym') . '-' . str_pad((string) $lastId, 6, '0', STR_PAD_LEFT);
+            $ticketNo = 'MT-' . now()->format('ym') . '-' . $machine->dept_id . '-' . str_pad((string) $lastId, 6, '0', STR_PAD_LEFT);
 
             $ticket = MaintenanceTicket::create([
                 'ticket_no' => $ticketNo,

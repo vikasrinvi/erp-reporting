@@ -184,7 +184,7 @@
                         </ul>
                     </li>
 
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a
                             class="nav-link {{ request()->routeIs('inventory') ? 'active' : '' }}"
                             href="{{ route('inventory') }}"
@@ -192,7 +192,7 @@
                             <i class="bi bi-box-seam me-1"></i>
                             Inventory
                         </a>
-                    </li>
+                    </li> -->
 
                     <li class="nav-item">
                         <a
