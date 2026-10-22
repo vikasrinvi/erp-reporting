@@ -7,6 +7,7 @@ use App\Http\Controllers\ReportQueryController;
 use App\Http\Controllers\MachineMaintenanceController;
 use App\Http\Controllers\MaintenanceTicketController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\MaintenanceTicketDocumentController;
 
 
 
@@ -258,6 +259,20 @@ Route::get('/', function () {
 
             
         });
+
+        
+
+
+        Route::post(
+            '/maintenance-tickets/{maintenanceTicket}/documents',
+            [MaintenanceTicketDocumentController::class, 'store']
+        )->name('maintenance-tickets.documents.store');
+
+        Route::get(
+            '/maintenance-tickets/{maintenanceTicket}/documents/{document}/download',
+            [MaintenanceTicketDocumentController::class, 'download']
+        )->name('maintenance-tickets.documents.download');
+
 
         
 

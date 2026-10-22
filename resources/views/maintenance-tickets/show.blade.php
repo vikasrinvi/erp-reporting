@@ -98,6 +98,209 @@
             </div>
         </div>
 
+        <!-- Maintenance Documents: multi-file upload and document register -->
+        @php
+            $documentStageLabels = [
+                'request' => 'Ticket / Complaint',
+                'inspection' => 'Inspection',
+                'expert_assessment' => 'Expert Assessment',
+                'budget_approval' => 'Budget / Admin Approval',
+                'repair' => 'Repair',
+                'verification' => 'Final Verification',
+                'other' => 'Other',
+            ];
+
+            $defaultDocumentStage = match ($ticket->status) {
+                'pending_inspection' => 'inspection',
+                'pending_expert' => 'expert_assessment',
+                'pending_approval' => 'budget_approval',
+                'approved_for_repair', 'in_repair' => 'repair',
+                'pending_verification', 'closed', 'completed' => 'verification',
+                default => 'other',
+            };
+
+            $ticketDocuments = $ticket->documents ?? collect();
+            $documentsByStage = $ticketDocuments->groupBy('stage');
+        @endphp
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="fw-bold mb-0">Maintenance Documents</h5>
+                    <small class="text-muted">Upload multiple files, give each one a meaningful name, and keep them linked to the relevant workflow step.</small>
+                </div>
+                <span class="badge bg-light text-dark border">{{ $ticketDocuments->count() }} document(s)</span>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST"
+                      action="{{ route('maintenance-tickets.documents.store', $ticket) }}"
+                      enctype="multipart/form-data">
+                    @csrf
+
+                    <div id="maintenance-document-rows">
+                        <div class="maintenance-document-row border rounded p-3 mb-3">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-lg-3 col-md-6">
+                                    <label class="form-label fw-semibold">Workflow step <span class="text-danger">*</span></label>
+                                    <select name="documents[0][stage]" class="form-select" required>
+                                        @foreach($documentStageLabels as $stageValue => $stageLabel)
+                                            <option value="{{ $stageValue }}" {{ $defaultDocumentStage === $stageValue ? 'selected' : '' }}>{{ $stageLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-lg-4 col-md-6">
+                                    <label class="form-label fw-semibold">Document name <span class="text-danger">*</span></label>
+                                    <input type="text" name="documents[0][document_name]" class="form-control"
+                                           maxlength="255" placeholder="e.g. Initial Inspection Report" required>
+                                </div>
+                                <div class="col-lg-4 col-md-8">
+                                    <label class="form-label fw-semibold">Choose file <span class="text-danger">*</span></label>
+                                    <input type="file" name="documents[0][file]" class="form-control"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt" required>
+                                </div>
+                                <div class="col-lg-1 col-md-4 d-grid">
+                                    <button type="button" class="btn btn-outline-danger remove-maintenance-document d-none">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button type="button" id="add-maintenance-document" class="btn btn-outline-secondary">
+                            <i class="bi bi-plus-circle"></i> Add another document
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-arrow-up"></i> Upload documents
+                        </button>
+                    </div>
+                    <div class="form-text mt-2">Maximum 20 files per submission, 10 MB per file. Allowed: PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX and TXT. Files already uploaded are kept when you add more.</div>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <h6 class="fw-bold mb-0">Document register</h6>
+                    <span class="text-muted small">Documents are grouped by workflow step.</span>
+                </div>
+
+                @forelse($documentsByStage as $documentStage => $stageDocuments)
+                    <div class="mb-4">
+                        <h6 class="fw-semibold mb-2">
+                            {{ $documentStageLabels[$documentStage] ?? ucwords(str_replace('_', ' ', $documentStage)) }}
+                            <span class="badge bg-secondary">{{ $stageDocuments->count() }}</span>
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Document name</th>
+                                        <th>Original file</th>
+                                        <th style="width: 100px;">Size</th>
+                                        <th>Uploaded by</th>
+                                        <th>Uploaded at</th>
+                                        <th style="width: 110px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($stageDocuments as $document)
+                                        <tr>
+                                            <td class="fw-semibold">{{ $document->document_name }}</td>
+                                            <td class="text-break">{{ $document->original_name }}</td>
+                                            <td>{{ number_format(((int) $document->file_size) / 1024, 1) }} KB</td>
+                                            <td>{{ $document->uploaded_by ? $document->uploaded_by_name : 'Not recorded' }}</td>
+                                            <td>{{ $document->created_at?->format('d-m-Y h:i A') ?? '—' }}</td>
+                                            <td>
+                                                <a href="{{ route('maintenance-tickets.documents.download', ['maintenanceTicket' => $ticket->id, 'document' => $document->id]) }}"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-download"></i> Download
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center text-muted border rounded py-4">
+                        <i class="bi bi-file-earmark-text fs-3 d-block mb-2"></i>
+                        No documents uploaded yet. Add the first document above.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const container = document.getElementById('maintenance-document-rows');
+            const addButton = document.getElementById('add-maintenance-document');
+            if (!container || !addButton) return;
+
+            let rowIndex = 1;
+            const maxRows = 20;
+            const stageOptions = @json($documentStageLabels);
+            const defaultStage = @json($defaultDocumentStage);
+
+            function refreshRemoveButtons() {
+                const rows = container.querySelectorAll('.maintenance-document-row');
+                rows.forEach(function (row) {
+                    const removeButton = row.querySelector('.remove-maintenance-document');
+                    if (removeButton) {
+                        removeButton.classList.toggle('d-none', rows.length === 1);
+                    }
+                });
+            }
+
+            addButton.addEventListener('click', function () {
+                if (container.querySelectorAll('.maintenance-document-row').length >= maxRows) {
+                    alert('You can upload a maximum of 20 documents per submission.');
+                    return;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'maintenance-document-row border rounded p-3 mb-3';
+
+                const options = Object.entries(stageOptions).map(function ([value, label]) {
+                    return '<option value="' + value + '"' + (value === defaultStage ? ' selected' : '') + '>' + label + '</option>';
+                }).join('');
+
+                row.innerHTML = `
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label fw-semibold">Workflow step <span class="text-danger">*</span></label>
+                            <select name="documents[${rowIndex}][stage]" class="form-select" required>${options}</select>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label fw-semibold">Document name <span class="text-danger">*</span></label>
+                            <input type="text" name="documents[${rowIndex}][document_name]" class="form-control" maxlength="255" placeholder="Enter document name" required>
+                        </div>
+                        <div class="col-lg-4 col-md-8">
+                            <label class="form-label fw-semibold">Choose file <span class="text-danger">*</span></label>
+                            <input type="file" name="documents[${rowIndex}][file]" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt" required>
+                        </div>
+                        <div class="col-lg-1 col-md-4 d-grid">
+                            <button type="button" class="btn btn-outline-danger remove-maintenance-document">Remove</button>
+                        </div>
+                    </div>`;
+
+                container.appendChild(row);
+                rowIndex++;
+                refreshRemoveButtons();
+            });
+
+            container.addEventListener('click', function (event) {
+                const button = event.target.closest('.remove-maintenance-document');
+                if (button) {
+                    button.closest('.maintenance-document-row').remove();
+                    refreshRemoveButtons();
+                }
+            });
+
+            refreshRemoveButtons();
+        });
+        </script>
+
         <!-- Stage 1 — Inspection -->
         @if($ticket->status === 'pending_inspection')
         <div class="card border-0 shadow-sm mb-4">

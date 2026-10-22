@@ -52,4 +52,12 @@ class MaintenanceTicket extends Model
     {
         return 'id';
     }
+
+    public function documents()
+    {
+        return $this->hasMany(
+            MaintenanceTicketDocument::class,
+            'maintenance_ticket_id'
+        )->latest();
+    }
 }
