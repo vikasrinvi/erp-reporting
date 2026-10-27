@@ -8,6 +8,7 @@ use App\Http\Controllers\MachineMaintenanceController;
 use App\Http\Controllers\MaintenanceTicketController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MaintenanceTicketDocumentController;
+use App\Http\Controllers\MarketingCategoryIssueReportController;
 
 
 
@@ -275,6 +276,17 @@ Route::get('/', function () {
 
 
         
+
+        Route::get(
+            '/reports/marketing-category-issue',
+            [MarketingCategoryIssueReportController::class, 'index']
+        )->name('marketing-issue-report.index');
+
+        Route::post(
+            '/reports/marketing-category-issue/remarks',
+            [MarketingCategoryIssueReportController::class, 'saveRemark']
+        )->name('marketing-issue-report.remarks.save');
+
 
     });
 

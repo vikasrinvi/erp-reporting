@@ -1,0 +1,229 @@
+SELECT
+    t.*,
+
+    (t.TOTAL_jh + t.TOTAL_BP) AS TOTAL_DIS,
+
+    GREATEST(
+        (t.TOTAL_jh - IFNULL(t.stock_JH,0))
+      + (t.TOTAL_BP - IFNULL(t.stock_BP,0)),
+      0
+    ) AS TOTAL_REQUIRED
+
+FROM
+(
+    SELECT
+        l.item_code,
+        get_item_name(l.item_code) AS item_name,
+
+        
+
+        SUM(
+            CASE
+                WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-07'
+                     AND l.div_code='JH'
+                THEN IFNULL(l.qtyissued,0)
+                ELSE 0
+            END
+        ) AS dispatch_jul_JH,
+
+        SUM(
+            CASE
+                WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-08'
+                     AND l.div_code='JH'
+                THEN IFNULL(l.qtyissued,0)
+                ELSE 0
+            END
+        ) AS dispatch_aug_JH,
+
+        SUM(
+            CASE
+                WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-09'
+                     AND l.div_code='JH'
+                THEN IFNULL(l.qtyissued,0)
+                ELSE 0
+            END
+        ) AS dispatch_sep_JH,
+
+        (
+            SUM(
+                CASE
+                    WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-07'
+                         AND l.div_code='JH'
+                    THEN IFNULL(l.qtyissued,0)
+                    ELSE 0
+                END
+            )
+            +
+            SUM(
+                CASE
+                    WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-08'
+                         AND l.div_code='JH'
+                    THEN IFNULL(l.qtyissued,0)
+                    ELSE 0
+                END
+            )
+            +
+            SUM(
+                CASE
+                    WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-09'
+                         AND l.div_code='JH'
+                    THEN IFNULL(l.qtyissued,0)
+                    ELSE 0
+                END
+            )
+        ) AS TOTAL_jh,
+
+        
+
+        (
+            SELECT
+                IFNULL(SUM(yropqty),0)
+                + IFNULL(SUM(rqtyrecd),0)
+                - IFNULL(SUM(rqtyissued),0)
+            FROM itembal_mast b
+            WHERE b.acc_year='26-27'
+              AND b.item_code=l.item_code
+              AND b.div_code='JH'
+        ) AS stock_JH,
+
+        
+
+        GREATEST(
+            (
+                SUM(CASE WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-07' AND l.div_code='JH'
+                         THEN IFNULL(l.qtyissued,0) ELSE 0 END)
+                +
+                SUM(CASE WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-08' AND l.div_code='JH'
+                         THEN IFNULL(l.qtyissued,0) ELSE 0 END)
+                +
+                SUM(CASE WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-09' AND l.div_code='JH'
+                         THEN IFNULL(l.qtyissued,0) ELSE 0 END)
+            )
+            -
+            (
+                SELECT
+                    IFNULL(SUM(yropqty),0)
+                    + IFNULL(SUM(rqtyrecd),0)
+                    - IFNULL(SUM(rqtyissued),0)
+                FROM itembal_mast b
+                WHERE b.acc_year='26-27'
+                  AND b.item_code=l.item_code
+                  AND b.div_code='JH'
+            ),
+            0
+        ) AS REQUIRED_JH,
+
+        
+
+        SUM(
+            CASE
+                WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-07'
+                     AND l.div_code='BPJH'
+                THEN IFNULL(l.qtyissued,0)
+                ELSE 0
+            END
+        ) AS dispatch_jul_BP,
+
+        SUM(
+            CASE
+                WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-08'
+                     AND l.div_code='BPJH'
+                THEN IFNULL(l.qtyissued,0)
+                ELSE 0
+            END
+        ) AS dispatch_aug_BP,
+
+        SUM(
+            CASE
+                WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-09'
+                     AND l.div_code='BPJH'
+                THEN IFNULL(l.qtyissued,0)
+                ELSE 0
+            END
+        ) AS dispatch_sep_BP,
+
+        (
+            SUM(
+                CASE
+                    WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-07'
+                         AND l.div_code='BPJH'
+                    THEN IFNULL(l.qtyissued,0)
+                    ELSE 0
+                END
+            )
+            +
+            SUM(
+                CASE
+                    WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-08'
+                         AND l.div_code='BPJH'
+                    THEN IFNULL(l.qtyissued,0)
+                    ELSE 0
+                END
+            )
+            +
+            SUM(
+                CASE
+                    WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-09'
+                         AND l.div_code='BPJH'
+                    THEN IFNULL(l.qtyissued,0)
+                    ELSE 0
+                END
+            )
+        ) AS TOTAL_BP,
+
+        
+
+        (
+            SELECT
+                IFNULL(SUM(yropqty),0)
+                + IFNULL(SUM(rqtyrecd),0)
+                - IFNULL(SUM(rqtyissued),0)
+            FROM itembal_mast b
+            WHERE b.acc_year='26-27'
+              AND b.item_code=l.item_code
+              AND b.div_code='BPJH'
+        ) AS stock_BP,
+
+        
+
+        GREATEST(
+            (
+                SUM(CASE WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-07' AND l.div_code='BPJH'
+                         THEN IFNULL(l.qtyissued,0) ELSE 0 END)
+                +
+                SUM(CASE WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-08' AND l.div_code='BPJH'
+                         THEN IFNULL(l.qtyissued,0) ELSE 0 END)
+                +
+                SUM(CASE WHEN DATE_FORMAT(l.vrdate,'%Y-%m')='2025-09' AND l.div_code='BPJH'
+                         THEN IFNULL(l.qtyissued,0) ELSE 0 END)
+            )
+            -
+            (
+                SELECT
+                    IFNULL(SUM(yropqty),0)
+                    + IFNULL(SUM(rqtyrecd),0)
+                    - IFNULL(SUM(rqtyissued),0)
+                FROM itembal_mast b
+                WHERE b.acc_year='26-27'
+                  AND b.item_code=l.item_code
+                  AND b.div_code='BPJH'
+            ),
+            0
+        ) AS REQUIRED_BP
+
+    FROM `itemtran_body_25-26` l
+
+    WHERE l.vrdate BETWEEN '2025-07-01' AND '2025-09-30'
+      AND l.item_code IN
+      (
+          SELECT item_code
+          FROM item_mast
+          WHERE godown_code='JH060'
+            AND defunctional_flag=0
+      )
+
+    GROUP BY l.item_code
+
+) t
+
+ORDER BY t.item_code  
