@@ -9,6 +9,7 @@ use App\Http\Controllers\MaintenanceTicketController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MaintenanceTicketDocumentController;
 use App\Http\Controllers\MarketingCategoryIssueReportController;
+use App\Http\Controllers\DispatchRequirementReportController;
 
 
 
@@ -286,6 +287,25 @@ Route::get('/', function () {
             '/reports/marketing-category-issue/remarks',
             [MarketingCategoryIssueReportController::class, 'saveRemark']
         )->name('marketing-issue-report.remarks.save');
+
+        
+
+
+        Route::get(
+            '/reports/dispatch-requirement',
+            [DispatchRequirementReportController::class, 'index']
+        )->name('dispatch-requirement.index');
+
+        Route::post(
+            '/reports/dispatch-requirement/stock',
+            [DispatchRequirementReportController::class, 'saveStock']
+        )->name('dispatch-requirement.stock.save');
+
+        Route::get(
+            '/reports/dispatch-requirement/export',
+            [DispatchRequirementReportController::class, 'exportExcel']
+        )->name('dispatch-requirement.export');
+
 
 
     });
