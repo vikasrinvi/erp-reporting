@@ -180,6 +180,15 @@
                                     ASV Item Issue
                                 </a>
                             </li>
+                            <li>
+                                <a
+                                    class="dropdown-item"
+                                    href="{{ route('dispatch-requirement.index') }}"
+                                >
+                                    <i class="bi bi-bar-chart-line me-2"></i>
+                                    Dispatch Stock 
+                                </a>
+                            </li>
 
                         </ul>
                     </li>
