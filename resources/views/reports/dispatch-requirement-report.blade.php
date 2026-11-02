@@ -10,10 +10,6 @@
             overflow-x: hidden;
         }
 
-        .container-fluid {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
 
         .page-header {
             background: linear-gradient(135deg, #172033, #273b63);
@@ -219,13 +215,7 @@
         }
     </style>
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-box">
-            <div class="spinner-border text-primary mb-2" role="status" style="width: 1.5rem; height: 1.5rem;"></div>
-            <div class="fw-semibold small">Generating report...</div>
-        </div>
-    </div>
+
 
     <!-- HEADER -->
     <div class="page-header">
@@ -341,30 +331,45 @@
                     </div>
                 </div>
 
+                
+
                 <div class="table-container">
-                    <table class="table table-hover report-table">
+                    <table class="table table-hover table-bordered report-table align-middle">
                         <thead>
+                            <!-- Top Row: Division Grouping -->
                             <tr>
-                                <th>Item Code</th>
-                                <th>Item Name</th>
-
+                                <th rowspan="2" class="align-middle">Item Code</th>
+                                <th rowspan="2" class="align-middle">Item Name</th>
+                                
+                                <!-- JH Group Header -->
+                                <th colspan="{{ count($months) + 3 }}" class="text-center  border-bottom">JH Division</th>
+                                
+                                <!-- BPJH Group Header -->
+                                <th colspan="{{ count($months) + 3 }}" class="text-center  border-bottom">BPJH Division</th>
+                                
+                                <!-- Summary Group Header -->
+                                <th colspan="2" class="text-center  border-bottom">Summary</th>
+                            </tr>
+                            
+                            <!-- Second Row: Individual Column Sub-headers -->
+                            <tr>
+                                <!-- JH Months -->
                                 @foreach($months as $month)
-                                    <th>Dispatch {{ $month['label'] }} JH</th>
-                                    <!-- <th>Dispatch {{ $month['label'] }} BPJH</th> -->
+                                    <th>{{ $month['label'] }}</th>
                                 @endforeach
-
                                 <th>TOTAL_JH</th>
                                 <th>Stock JH</th>
                                 <th>REQUIRED_JH</th>
-                                @foreach($months as $month)
-                                    <!-- <th>Dispatch {{ $month['label'] }} JH</th> -->
-                                    <th>Dispatch {{ $month['label'] }} BPJH</th>
-                                @endforeach
 
+                                <!-- BPJH Months -->
+                                @foreach($months as $month)
+                                    <th>{{ $month['label'] }}</th>
+                                @endforeach
                                 <th>TOTAL_BPJH</th>
                                 <th>Stock BPJH</th>
                                 <th>REQUIRED_BPJH</th>
 
+                                <!-- Summary Columns -->
                                 <th>TOTAL_DIS</th>
                                 <th>TOTAL_REQUIRED</th>
                             </tr>
@@ -376,16 +381,17 @@
                                     <td class="fw-bold text-primary">{{ $row['item_code'] }}</td>
                                     <td>{{ $row['item_name'] }}</td>
 
+                                    <!-- JH Months Data -->
                                     @foreach($months as $month)
                                         @php
                                             $key = str_replace('-', '_', $month['key']);
                                         @endphp
                                         <td>{{ number_format($row['dispatch_' . $key . '_jh'] ?? 0, 3) }}</td>
-                                        <!-- <td>{{ number_format($row['dispatch_' . $key . '_bp'] ?? 0, 3) }}</td> -->
                                     @endforeach
 
                                     <td>{{ number_format($row['total_jh'], 3) }}</td>
 
+                                    <!-- JH Stock Form -->
                                     <td>
                                         <form class="stock-form" method="POST" action="{{ route('dispatch-requirement.stock.save') }}">
                                             @csrf
@@ -394,21 +400,24 @@
                                             <input type="hidden" name="to_date" value="{{ $to }}">
 
                                             <input class="stock-input" type="number" step="0.001" min="0" name="stock_jh"
-                                                   value="{{ old('item_code') == $row['item_code'] ? old('stock_jh') : number_format($row['stock_jh'], 3, '.', '') }}" required>
+                                                value="{{ old('item_code') == $row['item_code'] ? old('stock_jh') : number_format($row['stock_jh'], 3, '.', '') }}" required>
                                             <button class="save-btn" type="submit">Save</button>
                                         </form>
                                     </td>
 
                                     <td>{{ number_format($row['required_jh'], 3) }}</td>
+
+                                    <!-- BPJH Months Data -->
                                     @foreach($months as $month)
                                         @php
                                             $key = str_replace('-', '_', $month['key']);
                                         @endphp
-                                        <!-- <td>{{ number_format($row['dispatch_' . $key . '_jh'] ?? 0, 3) }}</td> -->
                                         <td>{{ number_format($row['dispatch_' . $key . '_bp'] ?? 0, 3) }}</td>
                                     @endforeach
+
                                     <td>{{ number_format($row['total_bp'], 3) }}</td>
 
+                                    <!-- BPJH Stock Form -->
                                     <td>
                                         <form class="stock-form" method="POST" action="{{ route('dispatch-requirement.stock.save') }}">
                                             @csrf
@@ -417,7 +426,7 @@
                                             <input type="hidden" name="to_date" value="{{ $to }}">
 
                                             <input class="stock-input" type="number" step="0.001" min="0" name="stock_bp"
-                                                   value="{{ old('item_code') == $row['item_code'] ? old('stock_bp') : number_format($row['stock_bp'], 3, '.', '') }}" required>
+                                                value="{{ old('item_code') == $row['item_code'] ? old('stock_bp') : number_format($row['stock_bp'], 3, '.', '') }}" required>
                                             <input type="hidden" name="stock_jh" value="{{ number_format($row['stock_jh'], 3, '.', '') }}">
                                             <button class="save-btn" type="submit">Save</button>
                                         </form>
@@ -429,7 +438,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ 10 + (count($months) * 2) }}" class="text-center py-4 text-muted small">
+                                    <td colspan="{{ 4 + (count($months) * 2) }}" class="text-center py-4 text-muted small">
                                         <i class="bi bi-inbox fs-4 d-block mb-1"></i>
                                         No items found for the selected criteria.
                                     </td>

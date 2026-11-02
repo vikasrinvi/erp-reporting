@@ -1,0 +1,69 @@
+
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vikas-erp-app
+    container_name: vikas-erp-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - vikas-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: vikas-erp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - vikas-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: vikas-erp-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: vikas-erp
+      MYSQL_ROOT_PASSWORD: 'root'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - vikas-network
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: vikas-erp-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - vikas-network
+  
+  adminer:
+    image: adminer
+    container_name: vikas-erp-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - vikas-network
+
+volumes:
+  dbdata:
+    driver: local
+
+networks:
+  vikas-network:
+    driver: bridge
