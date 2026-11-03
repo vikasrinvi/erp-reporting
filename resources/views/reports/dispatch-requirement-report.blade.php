@@ -10,7 +10,6 @@
             overflow-x: hidden;
         }
 
-
         .page-header {
             background: linear-gradient(135deg, #172033, #273b63);
             color: white;
@@ -237,18 +236,19 @@
             </div>
         </div>
     </div>
+    
 
     <div class="container-fluid px-3 px-md-4">
 
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show py-2 small" role="alert">
+            <div class="alert alert-success alert-dismissible fade show py-2 small" role="alert" style="z-index: 1000;">
                 {{ session('success') }}
                 <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
 
         @if($errors->any())
-            <div class="alert alert-danger alert-dismissible fade show py-2 small" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show py-2 small" role="alert" style="z-index: 1000;">
                 <strong>Please correct the following:</strong>
                 <ul class="mb-0 mt-1 ps-3">
                     @foreach($errors->all() as $error)
@@ -287,6 +287,65 @@
             </div>
         </div>
 
+        {{-- Stock Import --}}
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Import Stock from Excel</strong>
+            </div>
+
+            <div class="card-body">
+                <form
+                    action="{{ route('dispatch-requirement.stock.import') }}"
+                    method="POST"
+                    enctype="multipart/form-data"
+                >
+                    @csrf
+
+                    <div class="row align-items-end">
+
+                        <div class="col-md-3">
+                            <label class="form-label">Select Division</label>
+
+                            <select name="division" class="form-control" required>
+                                <option value="">Select Division</option>
+                                <option value="JH" {{ old('division') == 'JH' ? 'selected' : '' }}>
+                                    JH
+                                </option>
+                                <option value="BPJH" {{ old('division') == 'BPJH' ? 'selected' : '' }}>
+                                    BPJH
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-5">
+                            <label class="form-label">Select Excel File</label>
+
+                            <input
+                                type="file"
+                                name="file"
+                                class="form-control"
+                                accept=".xlsx,.xls,.csv"
+                                required
+                            >
+                        </div>
+
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary">
+                                Import Stock
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+
+                <small class="text-muted d-block mt-2">
+                    Item code: 2nd column. Stock quantity: last (TOTAL STOCK) column.
+                    Supported formats: XLSX, XLS and CSV. Maximum file size: 10 MB.
+                </small>
+
+            </div>
+        </div>
+
         <!-- SUMMARY CARDS -->
         <div class="row g-2 mb-3 summary-section">
             <div class="col-md-6">
@@ -316,7 +375,7 @@
         <div class="card report-card mb-4">
             <div class="card-body p-0">
 
-                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white rounded-top">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white rounded-top flex-wrap gap-2">
                     <div>
                         <h6 class="mb-0 fw-bold small">Requirement Details</h6>
                         <div class="report-footer">
@@ -324,17 +383,20 @@
                         </div>
                     </div>
 
-                    <div class="d-flex gap-2 no-print">
+                    <!-- Live Table Search Input -->
+                    <div class="d-flex align-items-center gap-2 no-print">
+                        <div class="input-group input-group-sm" style="width: 240px;">
+                            <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="tableSearchInput" class="form-control form-control-sm" placeholder="Search item code or name..." onkeyup="filterReportTable()">
+                        </div>
                         <button type="button" onclick="window.print()" class="btn btn-outline-dark btn-sm py-1 px-2 small">
                             <i class="bi bi-printer me-1"></i> Print
                         </button>
                     </div>
                 </div>
 
-                
-
                 <div class="table-container">
-                    <table class="table table-hover table-bordered report-table align-middle">
+                    <table class="table table-hover table-bordered report-table align-middle" id="reportTable">
                         <thead>
                             <!-- Top Row: Division Grouping -->
                             <tr>
@@ -342,13 +404,13 @@
                                 <th rowspan="2" class="align-middle">Item Name</th>
                                 
                                 <!-- JH Group Header -->
-                                <th colspan="{{ count($months) + 3 }}" class="text-center  border-bottom">JH Division</th>
+                                <th colspan="{{ count($months) + 3 }}" class="text-center border-bottom">JH Division</th>
                                 
                                 <!-- BPJH Group Header -->
-                                <th colspan="{{ count($months) + 3 }}" class="text-center  border-bottom">BPJH Division</th>
+                                <th colspan="{{ count($months) + 3 }}" class="text-center border-bottom">BPJH Division</th>
                                 
                                 <!-- Summary Group Header -->
-                                <th colspan="2" class="text-center  border-bottom">Summary</th>
+                                <th colspan="2" class="text-center border-bottom">Summary</th>
                             </tr>
                             
                             <!-- Second Row: Individual Column Sub-headers -->
@@ -377,9 +439,9 @@
 
                         <tbody>
                             @forelse($rows as $row)
-                                <tr>
-                                    <td class="fw-bold text-primary">{{ $row['item_code'] }}</td>
-                                    <td>{{ $row['item_name'] }}</td>
+                                <tr class="searchable-row">
+                                    <td class="fw-bold text-primary item-code">{{ $row['item_code'] }}</td>
+                                    <td class="item-name">{{ $row['item_name'] }}</td>
 
                                     <!-- JH Months Data -->
                                     @foreach($months as $month)
@@ -452,4 +514,30 @@
         </div>
 
     </div>
+
+    <!-- Live Search JavaScript Script -->
+    <script>
+        function filterReportTable() {
+            let input = document.getElementById('tableSearchInput');
+            let filter = input.value.toLowerCase();
+            let table = document.getElementById('reportTable');
+            let tr = table.getElementsByClassName('searchable-row');
+
+            for (let i = 0; i < tr.length; i++) {
+                let codeCell = tr[i].getElementsByClassName('item-code')[0];
+                let nameCell = tr[i].getElementsByClassName('item-name')[0];
+                
+                if (codeCell || nameCell) {
+                    let codeText = codeCell ? codeCell.textContent || codeCell.innerText : '';
+                    let nameText = nameCell ? nameCell.textContent || nameCell.innerText : '';
+
+                    if (codeText.toLowerCase().indexOf(filter) > -1 || nameText.toLowerCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+    </script>
 @endsection

@@ -10,6 +10,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MaintenanceTicketDocumentController;
 use App\Http\Controllers\MarketingCategoryIssueReportController;
 use App\Http\Controllers\DispatchRequirementReportController;
+use App\Http\Controllers\DispatchStockImportController;
+
 
 
 
@@ -306,7 +308,10 @@ Route::get('/', function () {
             [DispatchRequirementReportController::class, 'exportExcel']
         )->name('dispatch-requirement.export');
 
-
+        Route::post(
+            '/reports/dispatch-requirement/import-stock',
+            [DispatchStockImportController::class, 'import']
+        )->name('dispatch-requirement.stock.import');
 
     });
 
