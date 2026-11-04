@@ -26,6 +26,7 @@ class DispatchStockImportController extends Controller
         }
 
         $stockColumn = $request->division === 'JH' ? 'stock_jh' : 'stock_bp';
+        $updatedAtColumn = $request->division === 'JH' ? 'stock_jh_updated_at' : 'stock_bp_updated_at';
         $filePath = $request->file('file')->getRealPath();
 
         try {
@@ -138,6 +139,7 @@ class DispatchStockImportController extends Controller
             $records[] = [
                 'item_code' => $itemCode,
                 $stockColumn => $stock,
+                $updatedAtColumn => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -150,12 +152,12 @@ class DispatchStockImportController extends Controller
             );
         }
 
-        DB::transaction(function () use ($records, $stockColumn) {
+        DB::transaction(function () use ($records, $stockColumn, $updatedAtColumn) {
             foreach (array_chunk($records, 500) as $batch) {
                 DB::table('dispatch_stock_overrides')->upsert(
                     $batch,
                     ['item_code'],
-                    [$stockColumn, 'updated_at']
+                    [$stockColumn, $updatedAtColumn, 'updated_at']
                 );
             }
         });

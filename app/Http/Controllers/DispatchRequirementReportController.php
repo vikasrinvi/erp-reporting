@@ -142,6 +142,9 @@ class DispatchRequirementReportController extends Controller
                 'stock_bp' => (float) $row->stock_BP,
                 'stock_jh_override' => $override?->stock_jh,
                 'stock_bp_override' => $override?->stock_bp,
+                // Add timestamp mappings here:
+                'stock_jh_updated_at' => $override?->stock_jh_updated_at,
+                'stock_bp_updated_at' => $override?->stock_bp_updated_at,
                 'total_jh' => (float) $row->TOTAL_jh,
                 'total_bp' => (float) $row->TOTAL_BP,
                 'required_jh' => (float) $row->REQUIRED_JH,
@@ -494,12 +497,14 @@ class DispatchRequirementReportController extends Controller
                 'item_code' => 'The selected item is not eligible for this report.',
             ]);
         }
-
+        $now = now();
         DispatchStockOverride::updateOrCreate(
             ['item_code' => $validated['item_code']],
             [
                 'stock_jh' => $validated['stock_jh'],
+                'stock_jh_updated_at' => $now,
                 'stock_bp' => $validated['stock_bp'],
+                'stock_bp_updated_at' => $now,
             ]
         );
 

@@ -399,6 +399,13 @@
                     <table class="table table-hover table-bordered report-table align-middle" id="reportTable">
                         <thead>
                             <!-- Top Row: Division Grouping -->
+
+                            @php
+                                $latestJhUpdated = \App\Models\DispatchStockOverride::max('stock_jh_updated_at');
+                                $latestBpUpdated = \App\Models\DispatchStockOverride::max('stock_bp_updated_at');
+
+                                
+                            @endphp
                             <tr>
                                 <th rowspan="2" class="align-middle">Item Code</th>
                                 <th rowspan="2" class="align-middle">Item Name</th>
@@ -420,7 +427,10 @@
                                     <th>{{ $month['label'] }}</th>
                                 @endforeach
                                 <th>TOTAL_JH</th>
-                                <th>Stock JH</th>
+                                <th>Stock JH 
+                                    @if($latestJhUpdated)
+                                        <br><small class="fw-normal text-white" style="font-size: 11px;">Updated: {{ \Carbon\Carbon::parse($latestJhUpdated)->format('d-m-Y H:i') }}</small>
+                                    @endif</th>
                                 <th>REQUIRED_JH</th>
 
                                 <!-- BPJH Months -->
@@ -428,7 +438,12 @@
                                     <th>{{ $month['label'] }}</th>
                                 @endforeach
                                 <th>TOTAL_BPJH</th>
-                                <th>Stock BPJH</th>
+                                <th>Stock BPJH
+                                    @if($latestBpUpdated)
+                                        <br><small class="fw-normal text-white" style="font-size: 11px;">Updated: {{ \Carbon\Carbon::parse($latestBpUpdated)->format('d-m-Y H:i') }}</small>
+                                    @endif
+                                </th>
+                                
                                 <th>REQUIRED_BPJH</th>
 
                                 <!-- Summary Columns -->
